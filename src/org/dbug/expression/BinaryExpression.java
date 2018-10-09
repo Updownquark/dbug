@@ -1,0 +1,69 @@
+package org.dbug.expression;
+
+import org.dbug.DBugEvent;
+import org.dbug.config.DBugConfiguredAnchor;
+
+import com.google.common.reflect.TypeToken;
+
+public abstract class BinaryExpression<T, A, B, X> implements Expression<T, X> {
+	private final Expression<T, ? extends A> theLeft;
+	private final Expression<T, ? extends B> theRight;
+	private final TypeToken<X> theType;
+
+	public BinaryExpression(Expression<T, ? extends A> left, Expression<T, ? extends B> right, TypeToken<X> type) {
+		theLeft = left;
+		theRight = right;
+		theType = type;
+	}
+
+	public Expression<T, ? extends A> getLeft() {
+		return theLeft;
+	}
+
+	public Expression<T, ? extends B> getRight() {
+		return theRight;
+	}
+
+	@Override
+	public TypeToken<X> getResultType() {
+		return theType;
+	}
+
+	@Override
+	public X evaluate(DBugEvent<T> event) throws DBugParseException {
+		return evaluate(//
+			theLeft.evaluate(event), //
+			theRight.evaluate(event));
+	}
+
+	protected abstract X evaluate(A a, B b);
+
+	@Override
+	public Expression<T, ? extends X> given(DBugConfiguredAnchor<T> anchor, boolean evalDynamic, boolean cacheable)
+		throws DBugParseException {
+		Expression<T, ? extends A> left = theLeft.given(anchor, evalDynamic, cacheable);
+		Expression<T, ? extends B> right = theRight.given(anchor, evalDynamic, cacheable);
+		if (left == theLeft && right == theRight)
+			return this;
+		else if (cacheable && left instanceof ConstantExpression && right instanceof ConstantExpression)
+			return new ConstantExpression<>(theType,
+				evaluate(//
+					((ConstantExpression<T, ? extends A>) left).value, //
+					((ConstantExpression<T, ? extends B>) right).value));
+		else
+			return copy(left, right);
+	}
+
+	protected abstract Expression<T, X> copy(Expression<T, ? extends A> left, Expression<T, ? extends B> right);
+
+	@Override
+	public int hashCode() {
+		return (theLeft.hashCode() + theRight.hashCode()) * 7;
+	}
+
+	@Override
+	public abstract boolean equals(Object obj);
+
+	@Override
+	public abstract String toString();
+}
