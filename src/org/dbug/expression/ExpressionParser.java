@@ -178,6 +178,9 @@ public class ExpressionParser {
 		@Override
 		public void exitLiteral(LiteralContext ctx) {
 			switch (ctx.start.getType()) {
+			case DBugParser.NullLiteral:
+				push(new ExpressionTypes.NullLiteral(ctx));
+				break;
 			case DBugParser.IntegerLiteral:
 				push(new ExpressionTypes.IntegerLiteral(ctx));
 				break;

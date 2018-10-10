@@ -28,6 +28,20 @@ public class BinaryMathExpression<A, T> extends BinaryExpression<A, Object, Obje
 	}
 
 	@Override
+	protected boolean needsRightArg(Object a) {
+		if (theOpName.equals("&&") && !((Boolean) a).booleanValue())
+			return false;
+		else if (theOpName.equals("||") && ((Boolean) a).booleanValue())
+			return false;
+		return true;
+	}
+
+	@Override
+	protected T evaluateLeftOnly(Object a) {
+		return (T) a;
+	}
+
+	@Override
 	protected Expression<A, T> copy(Expression<A, ?> left, Expression<A, ?> right) {
 		return new BinaryMathExpression<>(left, right, getResultType(), theOpName, theOperation, isTransitive);
 	}

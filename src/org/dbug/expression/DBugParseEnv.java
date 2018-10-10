@@ -154,6 +154,7 @@ public class DBugParseEnv<T> {
 		return theType.getStaticFields().keySet().contains(dependency)//
 			|| theType.getDynamicFields().keySet().contains(dependency)//
 			|| theAnchorVariables.keySet().contains(dependency)//
+			|| (theEventType != null && theEventType.getEventFields().keySet().contains(dependency))//
 			|| (theEventVariables != null && theEventVariables.keySet().contains(dependency));
 	}
 

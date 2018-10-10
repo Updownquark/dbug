@@ -38,10 +38,23 @@ public abstract class BinaryExpression<T, A, B, X> implements Expression<T, X> {
 
 	protected abstract X evaluate(A a, B b);
 
+	protected boolean needsRightArg(A a) {
+		return true;
+	}
+
+	protected X evaluateLeftOnly(A a) {
+		throw new IllegalStateException("This must be overridden by the subclass if needsRightArg is overridden");
+	}
+
 	@Override
 	public Expression<T, ? extends X> given(DBugConfiguredAnchor<T> anchor, boolean evalDynamic, boolean cacheable)
 		throws DBugParseException {
 		Expression<T, ? extends A> left = theLeft.given(anchor, evalDynamic, cacheable);
+		if (left instanceof ConstantExpression) {
+			A a = ((ConstantExpression<T, ? extends A>) left).value;
+			if (!needsRightArg(a))
+				return new ConstantExpression<>(theType, evaluateLeftOnly(a));
+		}
 		Expression<T, ? extends B> right = theRight.given(anchor, evalDynamic, cacheable);
 		if (left == theLeft && right == theRight)
 			return this;

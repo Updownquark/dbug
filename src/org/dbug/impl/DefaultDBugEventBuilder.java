@@ -32,6 +32,8 @@ public class DefaultDBugEventBuilder<T> implements DBugEventBuilder {
 
 	@Override
 	public DBugEventBuilder with(String property, Supplier<?> value) {
+		if (value == null)
+			return with(property, (Object) value);
 		int index = theEventProperties.keyIndex(property);
 		theSpecifiedParameters.set(index);
 		theEventProperties.put(index, value.get());

@@ -224,13 +224,11 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		ParameterMap<Object> dynamicValues = theDynamicValues.copy().unmodifiable();
 		configEvents = new DefaultDBugAnchor.ConfigSpecificEvent[theConfigs.size()];
 		for (int i = 0; i < configEvents.length; i++) {
-			for (DBugEventConfigInstance evtConfig : theConfigs.get(i).events.values()) {
-				if (evtConfig.eventConfig.eventType == event.getType()) {
-					configEvents[i] = new ConfigSpecificEvent(event, evtConfig, dynamicValues);
-					if (!configEvents[i].active)
-						configEvents[i] = null;
-					break;
-				}
+			DBugEventConfigInstance evtConfig = theConfigs.get(i).events.get(event.getType().getEventName());
+			if (evtConfig != null) {
+				configEvents[i] = new ConfigSpecificEvent(event, evtConfig, dynamicValues);
+				if (!configEvents[i].active)
+					configEvents[i] = null;
 			}
 		}
 		return configEvents;
