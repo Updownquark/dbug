@@ -35,10 +35,13 @@ public class MethodExpression<A, S, T> implements Expression<A, T> {
 
 	@Override
 	public T evaluate(DBugEvent<A> event) throws DBugParseException {
-		S source = theSource.evaluate(event);
-		if (source == null && (theMethod.getModifiers() & Modifier.STATIC) == 0) {
-			throw new DBugParseException("Relation is null for method expression");
-		}
+		S source;
+		if ((theMethod.getModifiers() & Modifier.STATIC) == 0) {
+			source = theSource.evaluate(event);
+			if (source == null)
+				throw new DBugParseException("Relation is null for method expression");
+		} else
+			source = null;
 		Object[] argValues = new Object[theArgs.length];
 		for (int a = 0; a < argValues.length; a++) {
 			argValues[a] = theArgs[a].evaluate(event);

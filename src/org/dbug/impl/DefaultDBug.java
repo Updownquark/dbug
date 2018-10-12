@@ -278,7 +278,9 @@ public class DefaultDBug implements DBugImplementation {
 		return at;
 	}
 
-	<T> DefaultDBugAnchor<T> getPreBuiltAnchor(DBugAnchorType<T> type, T value) {
+	<T> DBugAnchor<T> getPreBuiltAnchor(DefaultDBugAnchorType<T> type, T value) {
+		if (theConfigUrl == null)
+			return type.inactive();
 		DBugAnchorHolder holder = theAnchors.compute(new LightStorageKey(type, value), (k, h) -> {
 			if (h == null || !h.hold())
 				return null;
@@ -290,6 +292,8 @@ public class DefaultDBug implements DBugImplementation {
 	}
 
 	<T> DBugAnchorBuilder<T> debug(DefaultDBugAnchorType<T> type, T value) {
+		if (theConfigUrl == null)
+			return new PreResolvedAnchorBuilder<>(type.inactive());
 		DBugAnchorHolder holder = theAnchors.compute(new LightStorageKey(type, value), (k, h) -> {
 			if (h == null || !h.hold())
 				return null;
@@ -310,9 +314,9 @@ public class DefaultDBug implements DBugImplementation {
 	}
 
 	private static class PreResolvedAnchorBuilder<T> implements DBugAnchorBuilder<T> {
-		private final DefaultDBugAnchor<T> theAnchor;
+		private final DBugAnchor<T> theAnchor;
 
-		PreResolvedAnchorBuilder(DefaultDBugAnchor<T> anchor) {
+		PreResolvedAnchorBuilder(DBugAnchor<T> anchor) {
 			theAnchor = anchor;
 		}
 
@@ -338,7 +342,7 @@ public class DefaultDBug implements DBugImplementation {
 
 		StorageKey(DBugAnchorType<?> type, Object value) {
 			theAnchorType = type;
-			hashCode = type.hashCode() * 17 + value.hashCode();
+			hashCode = type.hashCode() * 17 + System.identityHashCode(value);
 		}
 
 		@Override
@@ -361,7 +365,7 @@ public class DefaultDBug implements DBugImplementation {
 			Object otherValue = other.get();
 			if (value == null || otherValue == null)
 				return false;
-			return value.equals(otherValue);
+			return value == otherValue;
 		}
 
 		@Override

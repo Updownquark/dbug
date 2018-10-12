@@ -1,6 +1,8 @@
 package org.dbug.expression;
 
+import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -14,11 +16,14 @@ import org.dbug.config.DBugConfig.DBugEventVariable;
 import org.dbug.config.DBugConfigTemplate;
 import org.dbug.config.DBugConfigTemplate.DBugConfigTemplateVariable;
 import org.dbug.config.DBugConfigTemplate.DBugEventConfigTemplate;
+import org.observe.util.TypeTokens;
 import org.qommons.collect.ParameterSet.ParameterMap;
 
 import com.google.common.reflect.TypeToken;
 
 public class DBugParseEnv<T> {
+	private static final Set<String> STANDARD_VAR_NAMES = Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList("value")));
+
 	private final DBugAnchorType<T> theType;
 	private final DBugEventType<T> theEventType;
 	private final DBugConfigTemplate theConfig;
@@ -63,7 +68,7 @@ public class DBugParseEnv<T> {
 		if (dependency.equals("value")) {
 			if (!type.isAssignableFrom(theType.getType()))
 				throw new DBugParseException("Cannot convert from " + theType.getType().getName() + " to " + type);
-			return (Expression<T, X>) new AnchorValueType<>(theType);
+			return (Expression<T, X>) new AnchorValueExpression<>(theType);
 		}
 		if (!thePath.add(dependency))
 			throw new DBugParseException("Circular dependency detected: " + printPath(thePath, dependency));
@@ -85,9 +90,13 @@ public class DBugParseEnv<T> {
 				theConfigVariableDependencies.set(index);
 				DBugConfigVariable<T, ?> variable = theAnchorVariables.get(index);
 				if (variable != null) {
-					if (!type.isAssignableFrom(variable.expression.getResultType()))
+					if (!type.isAssignableFrom(TypeTokens.get().wrap(variable.expression.getResultType())))
 						throw new DBugParseException("Cannot convert from " + variable.expression.getResultType() + " to " + type);
-					return (Expression<T, X>) variable.expression;
+					if (variable.dynamicDependencies != null)
+						theDynamicDependencies.or(variable.dynamicDependencies);
+					if (variable.configVariableDependencies != null)
+						theConfigVariableDependencies.or(variable.configVariableDependencies);
+					return new ConfigVariableExpression<>(this, true, index);
 				}
 				DBugConfigTemplateVariable varConfig = theConfig.getVariables().get(index);
 				if (isCacheable && !varConfig.cacheable)
@@ -103,7 +112,7 @@ public class DBugParseEnv<T> {
 
 				theAnchorVariables.put(index,
 					new DBugConfigVariable<>(varConfig, ex, getDynamicDependencies(), getConfigVariableDependencies()));
-				return ex;
+				return new ConfigVariableExpression<>(this, true, index);
 			}
 
 			index = theEventType == null ? -1 : theEventType.getEventFields().keySet().indexOf(dependency);
@@ -114,28 +123,39 @@ public class DBugParseEnv<T> {
 			index = theEventVariables == null ? -1 : theEventVariables.keySet().indexOf(dependency);
 			if (index >= 0) {
 				theEventVariableDependencies.set(index);
-				Expression<T, X> ex = (Expression<T, X>) theEventVariables.get(index);
-				if (ex != null) {
-					if (!type.isAssignableFrom(ex.getResultType()))
-						throw new DBugParseException("Cannot convert from " + ex.getResultType() + " to " + type);
-					return ex;
+				DBugEventVariable<T, X> ev = (DBugEventVariable<T, X>) theEventVariables.get(index);
+				if (ev != null) {
+					if (!type.isAssignableFrom(TypeTokens.get().wrap(ev.expression.getResultType())))
+						throw new DBugParseException("Cannot convert from " + ev.expression.getResultType() + " to " + type);
+					if (ev.eventVariableDependencies != null)
+						theEventVariableDependencies.or(ev.eventVariableDependencies);
+					return new ConfigVariableExpression<>(this, false, index);
 				}
 				DBugAntlrExpression varConfig = theEventConfig.eventVariables.get(index);
 
 				boolean oldCacheable = isCacheable;
 				isCacheable = false;
+				Expression<T, X> ex;
 				try {
 					ex = (Expression<T, X>) ExpressionParser.parseExpression(varConfig, type, this);
 				} finally {
 					isCacheable = oldCacheable;
 				}
-				theEventVariables.put(index, new DBugEventVariable<>(ex, getEventVariableDependencies()));
-				return ex;
+				theEventVariables.put(index, new DBugEventVariable<>(theEventType, dependency, index, ex, getEventVariableDependencies()));
+				return new ConfigVariableExpression<>(this, false, index);
 			}
 			throw new DBugParseException("Unrecognized variable: " + dependency);
 		} finally {
 			thePath.remove(dependency);
 		}
+	}
+
+	public ParameterMap<DBugConfig.DBugConfigVariable<T, ?>> getAnchorVariables() {
+		return theAnchorVariables.unmodifiable();
+	}
+
+	public ParameterMap<DBugEventVariable<T, ?>> getEventVariables() {
+		return theEventVariables.unmodifiable();
 	}
 
 	public BitSet getDynamicDependencies() {
@@ -151,7 +171,8 @@ public class DBugParseEnv<T> {
 	}
 
 	public boolean hasDependency(String dependency) {
-		return theType.getStaticFields().keySet().contains(dependency)//
+		return STANDARD_VAR_NAMES.contains(dependency)//
+			|| theType.getStaticFields().keySet().contains(dependency)//
 			|| theType.getDynamicFields().keySet().contains(dependency)//
 			|| theAnchorVariables.keySet().contains(dependency)//
 			|| (theEventType != null && theEventType.getEventFields().keySet().contains(dependency))//

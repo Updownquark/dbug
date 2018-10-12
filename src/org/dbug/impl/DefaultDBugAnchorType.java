@@ -6,9 +6,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
+import org.dbug.DBugAnchor;
 import org.dbug.DBugAnchorBuilder;
 import org.dbug.DBugAnchorType;
+import org.dbug.DBugEventBuilder;
 import org.dbug.DBugEventType;
 import org.dbug.DBugParameterType;
 import org.dbug.DBugVariableType;
@@ -39,6 +42,7 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 	final int theUpdateEventIndex;
 
 	private final List<DBugConfig<A>> theConfigs;
+	private InactiveAnchor<A> theInactive;
 
 	public DefaultDBugAnchorType(DefaultDBug debug, Class<A> type, Class<?> builderClass, Map<String, DBugParameterType<A, ?>> valueTypes,
 		Map<String, Map<String, TypeToken<?>>> eventTypes) {
@@ -168,6 +172,12 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 		}
 	}
 
+	DBugAnchor<A> inactive() {
+		if (theInactive == null)
+			theInactive = new InactiveAnchor<>(this);
+		return theInactive;
+	}
+
 	private DBugConfig<A> parseConfig(DBugConfigTemplate config, Consumer<String> onError) {
 		// Parse the anchor variables first
 		ParameterMap<DBugConfig.DBugConfigVariable<A, ?>> variables = parseVariables(config, onError);
@@ -224,6 +234,7 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 			if (found)
 				continue;
 			try {
+				// the env will itself populate the variables map
 				env.reset(varTemplates.get(i).cacheable).parseDependency(TypeTokens.get().of(Object.class), varName[0]);
 			} catch (DBugParseException e) {
 				onError.accept("Error in variable " + theType.getName() + "." + varName[0] + ": " + e);
@@ -270,9 +281,8 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 					continue;
 				}
 				try {
-					eventVars.put(j,
-						new DBugEventVariable<>(env.reset(false).parseDependency(TypeTokens.get().of(Object.class), varName[0]),
-							env.getEventVariableDependencies()));
+					// the env will itself populate the eventVars map
+					env.reset(false).parseDependency(TypeTokens.get().of(Object.class), varName[0]);
 				} catch (DBugParseException e) {
 					onError.accept("Error in event variable " + theType.getName() + "." + event.eventName + "." + varName[0] + ": " + e);
 					e.printStackTrace();
@@ -299,8 +309,57 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 				condition = null;
 			if (valid[0])
 				events.put(ei, new DBugConfig.DBugEventConfig<>(event, eventType, eventVars, condition == null ? null
-					: new DBugEventVariable<>((Expression<A, Boolean>) condition, env.getEventVariableDependencies())));
+					: new DBugEventVariable<>(eventType, null, -1, (Expression<A, Boolean>) condition,
+						env.getEventVariableDependencies())));
 		}
 		return events;
+	}
+
+	private static class InactiveAnchor<A> implements DBugAnchor<A> {
+		private final DefaultDBugAnchorType<A> theType;
+
+		InactiveAnchor(DefaultDBugAnchorType<A> type) {
+			theType = type;
+		}
+
+		@Override
+		public DBugAnchorType<A> getType() {
+			return theType;
+		}
+
+		@Override
+		public A getValue() {
+			return null;
+		}
+
+		@Override
+		public boolean isActive() {
+			return false;
+		}
+
+		@Override
+		public ParameterMap<Object> getStaticValues() {
+			return ParameterSet.EMPTY.createMap();
+		}
+
+		@Override
+		public ParameterMap<Object> getDynamicValues() {
+			return ParameterSet.EMPTY.createMap();
+		}
+
+		@Override
+		public <P> P setDynamicValue(String property, P value) {
+			return null;
+		}
+
+		@Override
+		public <P> DBugAnchor<A> modifyDynamicValue(String property, Function<? super P, ? extends P> map) {
+			return null;
+		}
+
+		@Override
+		public DBugEventBuilder event(String eventName) {
+			return DoNothingEventBuilder.INSTANCE;
+		}
 	}
 }

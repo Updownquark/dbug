@@ -53,12 +53,19 @@ public class DBugConfigTemplate {
 	}
 
 	public static class DBugConfigTemplateVariable {
+		public final String varName;
 		public final DBugAntlrExpression expression;
 		public final boolean cacheable;
 
-		public DBugConfigTemplateVariable(DBugAntlrExpression expression, boolean cacheable) {
+		public DBugConfigTemplateVariable(String varName, DBugAntlrExpression expression, boolean cacheable) {
+			this.varName = varName;
 			this.expression = expression;
 			this.cacheable = cacheable;
+		}
+
+		@Override
+		public String toString() {
+			return varName;
 		}
 	}
 

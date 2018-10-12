@@ -199,7 +199,7 @@ public class DBugConfigSet {
 		} catch (DBugParseException e) {
 			throw new DBugParseException("Error parsing variable " + configName + "." + varConfig.get("name"), e);
 		}
-		return new DBugConfigTemplateVariable(expression, varConfig.is("cache", true));
+		return new DBugConfigTemplateVariable(varConfig.get("name"), expression, varConfig.is("cache", true));
 	}
 
 	private static DBugAntlrExpression parseExpression(QommonsConfig subConfig) throws DBugParseException {

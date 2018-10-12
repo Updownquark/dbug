@@ -1,5 +1,8 @@
 package org.dbug.reporters;
 
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -10,7 +13,7 @@ import org.qommons.collect.ParameterSet.ParameterMap;
 import org.qommons.config.QommonsConfig;
 
 public class SystemPrintReporter implements DBugEventReporter {
-	private final Pattern PRINT_VAL_REF = Pattern.compile("[$][{](?<name>[a-zA-Z0-9_]+)[}]");
+	static final Pattern PRINT_VAL_REF = Pattern.compile("[$][{](?<name>[a-zA-Z0-9_]+)[}]");
 
 	private final ThreadLocal<Integer> theIndentAmount = ThreadLocal.withInitial(() -> 0);
 
@@ -26,23 +29,19 @@ public class SystemPrintReporter implements DBugEventReporter {
 
 	@Override
 	public void eventOccurred(DBugEvent<?> event) {
-		StringBuilder str = new StringBuilder();
-		indent(str, theIndentAmount.get());
+		List<Object> sequence = new LinkedList<>();
+		sequence.add(theIndentAmount.get());
 		int printValsIndex = event.getEventConfigValues().keySet().indexOf("printValues");
 		if (printValsIndex >= 0) {
 			String printStr = (String) event.getEventConfigValues().get(printValsIndex);
-			Matcher m = PRINT_VAL_REF.matcher(printStr);
-			int c = 0;
-			while (c < printStr.length() && m.find(c)) {
-				int found = m.start();
-				str.append(printStr, c, found);
-				printValue(str, event, m.group("name"), false);
-				c = m.end();
-			}
-			str.append(printStr, c, printStr.length());
-		} else
+			PrintedEventWithSpec spec = PrintedEventWithSpec.parse(theIndentAmount.get(), theIndent, printStr, event);
+			DBug.queueAction(() -> (error ? System.err : System.out).println(spec));
+		} else {
+			StringBuilder str = new StringBuilder();
+			indent(str, theIndentAmount.get(), theIndent);
 			printAllValues(str, event);
-		DBug.queueAction(() -> (error ? System.err : System.out).println(str));
+			DBug.queueAction(() -> (error ? System.err : System.out).println(str));
+		}
 	}
 
 	@Override
@@ -56,13 +55,105 @@ public class SystemPrintReporter implements DBugEventReporter {
 		theIndentAmount.set(theIndentAmount.get() - 1);
 	}
 
-	private void indent(StringBuilder str, int amount) {
+	private static void indent(StringBuilder str, int amount, String indentStr) {
 		for (int i = 0; i < amount; i++)
-			str.append(theIndent);
+			str.append(indentStr);
 	}
 
 	@Override
 	public void close() {}
+
+	static class PrintedEventWithSpec {
+		private final int theIndentAmount;
+		private final String theIndent;
+		private final String theText;
+		final List<ReferenceValue> theReferences;
+
+		static PrintedEventWithSpec parse(int indentAmount, String indent, String text, DBugEvent<?> event) {
+			PrintedEventWithSpec printed = new PrintedEventWithSpec(indentAmount, indent, text);
+			Matcher m = PRINT_VAL_REF.matcher(text);
+			int c = 0;
+			while (c < text.length() && m.find(c)) {
+				ReferenceValue ref = ReferenceValue.parse(event, m);
+				if (ref != null)
+					printed.theReferences.add(ref);
+				c = m.end();
+			}
+			return printed;
+		}
+
+		private PrintedEventWithSpec(int indentAmount, String indent, String text) {
+			theIndentAmount = indentAmount;
+			theIndent = indent;
+			theText = text;
+			theReferences = new LinkedList<>();
+		}
+
+		@Override
+		public String toString() {
+			StringBuilder str = new StringBuilder();
+			indent(str, theIndentAmount, theIndent);
+			for (int i = 0; i < theIndentAmount; i++)
+				str.append(theIndent);
+			Iterator<ReferenceValue> values = theReferences.iterator();
+			int lastValueEnd = 0;
+			while (values.hasNext()) {
+				ReferenceValue value = values.next();
+				str.append(theText, lastValueEnd, value.start);
+				str.append(value.value);
+				lastValueEnd = value.end;
+			}
+			str.append(theText, lastValueEnd, theText.length());
+			return str.toString();
+		}
+	}
+
+	static class ReferenceValue {
+		final Object value;
+		final int start;
+		final int end;
+
+		ReferenceValue(Object value, int start, int end) {
+			this.value = value;
+			this.start = start;
+			this.end = end;
+		}
+
+		static ReferenceValue parse(DBugEvent<?> event, Matcher m) {
+			String varName = m.group("name");
+			switch (varName) {
+			case "value":
+				return new ReferenceValue(event.getAnchor().getValue(), m.start(), m.end());
+			case "event":
+				return new ReferenceValue(event.getType().getEventName(), m.start(), m.end());
+			case "class":
+				return new ReferenceValue(event.getAnchor().getType().getType().getSimpleName(), m.start(), m.end());
+			case "time":
+				return new ReferenceValue(event.getStart(), m.start(), m.end());
+			}
+			ParameterMap<Object> values = event.getEventConfigValues();
+			int index = values.keySet().indexOf(varName);
+			if (index < 0) {
+				values = event.getEventValues();
+				index = values.keySet().indexOf(varName);
+			}
+			if (index < 0) {
+				values = event.getAnchor().getConfigValues();
+				index = values.keySet().indexOf(varName);
+			}
+			if (index < 0) {
+				values = event.getAnchor().getDynamicValues();
+				index = values.keySet().indexOf(varName);
+			}
+			if (index < 0) {
+				values = event.getAnchor().getStaticValues();
+				index = values.keySet().indexOf(varName);
+			}
+			if (index >= 0)
+				return new ReferenceValue(values.get(index), m.start(), m.end());
+			return null;
+		}
+	}
 
 	private static void printAllValues(StringBuilder str, DBugEvent<?> event) {
 		printStandardValue(str, event, "class", true);

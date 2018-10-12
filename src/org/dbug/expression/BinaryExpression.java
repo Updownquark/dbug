@@ -31,9 +31,11 @@ public abstract class BinaryExpression<T, A, B, X> implements Expression<T, X> {
 
 	@Override
 	public X evaluate(DBugEvent<T> event) throws DBugParseException {
+		A leftVal = theLeft.evaluate(event);
+		if (!needsRightArg(leftVal))
+			return evaluateLeftOnly(leftVal);
 		return evaluate(//
-			theLeft.evaluate(event), //
-			theRight.evaluate(event));
+			leftVal, theRight.evaluate(event));
 	}
 
 	protected abstract X evaluate(A a, B b);

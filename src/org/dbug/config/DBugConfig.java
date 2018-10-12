@@ -4,6 +4,7 @@ import java.util.BitSet;
 import java.util.List;
 
 import org.dbug.DBugAnchorType;
+import org.dbug.DBugEventType;
 import org.dbug.config.DBugConfigTemplate.DBugConfigTemplateVariable;
 import org.dbug.config.DBugConfigTemplate.DBugEventConfigTemplate;
 import org.dbug.expression.Expression;
@@ -85,6 +86,11 @@ public class DBugConfig<A> {
 			DBugConfigVariable<?, ?> other = (DBugConfigVariable<?, ?>) obj;
 			return expression.equals(other.expression);
 		}
+
+		@Override
+		public String toString() {
+			return template == null ? "condition" : template.toString();
+		}
 	}
 
 	public static class DBugEventConfig<A> {
@@ -113,12 +119,24 @@ public class DBugConfig<A> {
 	}
 
 	public static class DBugEventVariable<A, T> {
+		public final DBugEventType<A> eventType;
+		public final String varName;
+		public final int varIndex;
 		public final Expression<A, T> expression;
 		public final BitSet eventVariableDependencies;
 
-		public DBugEventVariable(Expression<A, T> expression, BitSet eventVariableDependencies) {
+		public DBugEventVariable(DBugEventType<A> eventType, String varName, int varIndex, Expression<A, T> expression,
+			BitSet eventVariableDependencies) {
+			this.eventType = eventType;
+			this.varName = varName;
+			this.varIndex = varIndex;
 			this.expression = expression;
 			this.eventVariableDependencies = eventVariableDependencies;
+		}
+
+		@Override
+		public String toString() {
+			return eventType.getEventName() + "." + (varName == null ? "condition" : varName);
 		}
 	}
 }

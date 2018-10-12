@@ -7,10 +7,10 @@ import org.observe.util.TypeTokens;
 
 import com.google.common.reflect.TypeToken;
 
-public class AnchorValueType<A> implements Expression<A, A> {
+public class AnchorValueExpression<A> implements Expression<A, A> {
 	private final DBugAnchorType<A> theType;
 
-	public AnchorValueType(DBugAnchorType<A> type) {
+	public AnchorValueExpression(DBugAnchorType<A> type) {
 		theType = type;
 	}
 
@@ -37,7 +37,7 @@ public class AnchorValueType<A> implements Expression<A, A> {
 
 	@Override
 	public boolean equals(Object obj) {
-		return obj instanceof AnchorValueType;
+		return obj instanceof AnchorValueExpression;
 	}
 
 	@Override

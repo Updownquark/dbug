@@ -358,6 +358,9 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 						variables.put(i, new UncachedAnchorEvaluatedExpression<>(this, config.getVariables().get(i)));
 				}
 			for (int i = 0; i < variables.keySet().size(); i++) {
+				variables.get(i).init();
+			}
+			for (int i = 0; i < variables.keySet().size(); i++) {
 				if (variables.get(i).expressionConfig.template.cacheable)
 					variables.get(i).reevaluate();
 			}
@@ -367,6 +370,7 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 					events.put(i, new DBugEventConfigInstance(this, config.getEvents().get(i)));
 			}
 			condition = new CachedAnchorEvaluatedExpression<>(this, config.getCondition());
+			condition.init();
 			condition.reevaluate();
 			if (!condition.error && condition.get())
 				isActive++;
@@ -402,15 +406,20 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 	private abstract class AnchorEvaluatedExpression<X> {
 		final DBugConfigInstance configuredAnchor;
 		final DBugConfigVariable<A, X> expressionConfig;
-		final Expression<A, ? extends X> staticallyEvaluated;
+		Expression<A, ? extends X> staticallyEvaluated;
+		boolean initialized;
 		boolean error;
 
 		AnchorEvaluatedExpression(DBugConfigInstance configAnchor, DBugConfigVariable<A, X> config) {
 			configuredAnchor = configAnchor;
 			this.expressionConfig = config;
+		}
+
+		void init() {
+			initialized = true;
 			Expression<A, ? extends X> evald;
 			try {
-				evald = config.expression.given(configuredAnchor, false,
+				evald = expressionConfig.expression.given(configuredAnchor, false,
 					expressionConfig.template == null || expressionConfig.template.cacheable);
 			} catch (DBugParseException e) {
 				error = true;
@@ -420,20 +429,28 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 			} catch (RuntimeException e) {
 				error = true;
 				evald = null;
-				// e.printStackTrace(); //Assume this is from the implementation
+				System.err.println("Could not evaluate " + (expressionConfig == null ? "condition" : expressionConfig.toString())
+					+ " for config on " + theType);
+				e.printStackTrace(); // Assume this is from the implementation
 			}
 			staticallyEvaluated = evald;
 		}
 
 		X evaluate() {
-			if (staticallyEvaluated == null)
-				return null;
+			if (staticallyEvaluated == null) {
+				if (!initialized)
+					init();
+				if (staticallyEvaluated == null)
+					return null;
+			}
 			try {
 				error = false;
 				return ((ConstantExpression<A, ? extends X>) staticallyEvaluated.given(configuredAnchor, true, true)).value;
-			} catch (DBugParseException e) {
+			} catch (DBugParseException | RuntimeException e) {
 				error = true;
 				// TODO At some point it would be better if we could report the error to the configs
+				System.err.println("Could not evaluate " + (expressionConfig == null ? "condition" : expressionConfig.toString())
+					+ " for config on " + theType);
 				e.printStackTrace();
 				return null;
 			}
@@ -458,6 +475,10 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 
 		@Override
 		X get() {
+			if (!initialized) {
+				init();
+				reevaluate();
+			}
 			return dynamicallyEvaluated;
 		}
 	}
@@ -547,6 +568,8 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 						} catch (DBugParseException e) {
 							error = true;
 							// TODO At some point it would be better if we could report the error to the configs
+							System.err.println("Could not evaluate event variable " + theType + "." + theEvent.getType().getEventName()
+								+ "." + theEvent.getType().getEventFields().keySet().get(i));
 							e.printStackTrace();
 						}
 					}
@@ -561,6 +584,7 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 						conditionActive = false;
 						error = true;
 						// TODO At some point it would be better if we could report the error to the configs
+						System.err.println("Could not evaluate condition for event " + theType + "." + theEvent.getType().getEventName());
 						e.printStackTrace();
 					}
 					active = conditionActive;
@@ -578,6 +602,8 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 							configValues.put(i, configVar.evaluate(this));
 						} catch (DBugParseException e) {
 							// TODO At some point it would be better if we could report the error to the configs
+							System.err.println("Could not evaluate event variable " + theType + "." + theEvent.getType().getEventName()
+								+ "." + theEvent.getType().getEventFields().keySet().get(i));
 							e.printStackTrace();
 						}
 					}
