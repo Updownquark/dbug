@@ -3,7 +3,6 @@ package org.dbug.config;
 import java.util.List;
 
 import org.dbug.expression.DBugAntlrExpression;
-import org.qommons.IterableUtils;
 import org.qommons.collect.ParameterSet.ParameterMap;
 
 public class DBugConfigTemplate {
@@ -85,8 +84,16 @@ public class DBugConfigTemplate {
 			this.eventReporters = eventReporters;
 		}
 
-		public Iterable<DBugEventReporter> getReporters() {
-			return IterableUtils.iterable(globalReporters, eventReporters);
+		public int getReporterCount() {
+			return globalReporters.size() + eventReporters.size();
+		}
+
+		public DBugEventReporter getReporter(int index) {
+			int erIndex = index - globalReporters.size();
+			if (erIndex < 0)
+				return globalReporters.get(index);
+			else
+				return eventReporters.get(erIndex);
 		}
 	}
 }

@@ -3,6 +3,7 @@ package org.dbug;
 import java.time.Instant;
 
 import org.dbug.config.DBugConfig;
+import org.dbug.config.DBugConfig.DBugEventConfig;
 import org.dbug.config.DBugConfiguredAnchor;
 import org.qommons.collect.ParameterSet.ParameterMap;
 
@@ -10,6 +11,8 @@ public interface DBugEvent<T> {
 	DBugProcess getProcess();
 
 	DBugConfig<T> getConfig();
+
+	DBugEventConfig<T> getEventConfig();
 
 	long getEventId();
 

@@ -13,5 +13,7 @@ public interface DBugEventType<T> {
 
 	String getEventName();
 
+	int getEventIndex();
+
 	ParameterMap<TypeToken<?>> getEventFields();
 }

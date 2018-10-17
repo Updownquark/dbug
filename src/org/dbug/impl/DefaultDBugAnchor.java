@@ -1,6 +1,7 @@
 package org.dbug.impl;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.HashSet;
@@ -224,7 +225,7 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		ParameterMap<Object> dynamicValues = theDynamicValues.copy().unmodifiable();
 		configEvents = new DefaultDBugAnchor.ConfigSpecificEvent[theConfigs.size()];
 		for (int i = 0; i < configEvents.length; i++) {
-			DBugEventConfigInstance evtConfig = theConfigs.get(i).events.get(event.getType().getEventName());
+			DBugEventConfigInstance evtConfig = theConfigs.get(i).events.get(event.getType().getEventIndex());
 			if (evtConfig != null) {
 				configEvents[i] = new ConfigSpecificEvent(event, evtConfig, dynamicValues);
 				if (!configEvents[i].active)
@@ -544,6 +545,7 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		private final ParameterMap<Object> theDynamicValuesCopy;
 		private final ParameterMap<Object> theEventConfigValues;
 		final boolean active;
+		private List<Transaction> theReporterTransactions;
 
 		ConfigSpecificEvent(DBugEventTemplate<A> event, DBugEventConfigInstance config, ParameterMap<Object> dynamicValues) {
 			theEvent = event;
@@ -622,6 +624,11 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		}
 
 		@Override
+		public DBugEventConfig<A> getEventConfig() {
+			return theConfig.eventConfig;
+		}
+
+		@Override
 		public long getEventId() {
 			return theEvent.getEventId();
 		}
@@ -662,7 +669,9 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		}
 
 		void occurred() {
-			for (DBugEventReporter reporter : theConfig.eventConfig.template.getReporters()) {
+			int rc = theConfig.eventConfig.template.getReporterCount();
+			for (int i = 0; i < rc; i++) {
+				DBugEventReporter reporter = theConfig.eventConfig.template.getReporter(i);
 				try {
 					reporter.eventOccurred(this);
 				} catch (RuntimeException e) {
@@ -673,9 +682,12 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		}
 
 		void begun() {
-			for (DBugEventReporter reporter : theConfig.eventConfig.template.getReporters()) {
+			int rc = theConfig.eventConfig.template.getReporterCount();
+			theReporterTransactions = new ArrayList<>(rc);
+			for (int i = 0; i < rc; i++) {
+				DBugEventReporter reporter = theConfig.eventConfig.template.getReporter(i);
 				try {
-					reporter.eventBegun(this);
+					theReporterTransactions.add(reporter.eventBegun(this));
 				} catch (RuntimeException e) {
 					System.err.println("Exception occurred notifying reporter " + reporter + " of event " + this);
 					e.printStackTrace();
@@ -684,11 +696,12 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		}
 
 		void ended() {
-			for (DBugEventReporter reporter : theConfig.eventConfig.template.getReporters()) {
+			theEvent.close();
+			for (int i = 0; i < theReporterTransactions.size(); i++) {
 				try {
-					reporter.eventEnded(this);
+					theReporterTransactions.get(i).close();
 				} catch (RuntimeException e) {
-					System.err.println("Exception occurred notifying reporter " + reporter + " of event " + this);
+					System.err.println("Exception occurred notifying reporter of end of event " + this);
 					e.printStackTrace();
 				}
 			}

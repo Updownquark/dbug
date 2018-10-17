@@ -98,13 +98,19 @@ public class DBugConfig<A> {
 		public final DefaultDBugEventType<A> eventType;
 		public final ParameterMap<DBugEventVariable<A, ?>> eventVariables;
 		public final DBugEventVariable<A, Boolean> condition;
+		private final DBugConfig<A>[] theConfig;
 
 		public DBugEventConfig(DBugEventConfigTemplate template, DefaultDBugEventType<A> eventType,
-			ParameterMap<DBugEventVariable<A, ?>> eventVariables, DBugEventVariable<A, Boolean> condition) {
+			ParameterMap<DBugEventVariable<A, ?>> eventVariables, DBugEventVariable<A, Boolean> condition, DBugConfig<A>[] config) {
 			this.template = template;
 			this.eventType = eventType;
 			this.eventVariables = eventVariables;
 			this.condition = condition;
+			theConfig = config;
+		}
+
+		public DBugConfig<A> getConfig() {
+			return theConfig[0];
 		}
 
 		@Override

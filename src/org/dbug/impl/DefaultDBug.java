@@ -60,6 +60,10 @@ public class DefaultDBug implements DBugImplementation {
 	private URL theConfigUrl;
 	private String theConfigError;
 
+	long lastConfigCheck;
+	final long configCheckInterval = 1000;
+	final String configProperty = DBug.class.getName() + ".config";
+
 	public DefaultDBug() {
 		theProcess = new DefaultDBugProcess();
 		theAnchorTypes = new ConcurrentHashMap<>();
@@ -69,45 +73,10 @@ public class DefaultDBug implements DBugImplementation {
 		theActionQueue = new ConcurrentLinkedQueue<>();
 		theConfig = new DBugConfigSet();
 
+		checkConfig();
 		new Thread(() -> {
-			long lastConfigCheck = 0;
-			final long configCheckInterval = 1000;
-			final String configProperty = DBug.class.getName() + ".config";
 			while (true) {
-				long now = System.currentTimeMillis();
-				if (now >= lastConfigCheck + configCheckInterval) {
-					// Check for config changes
-					String config = System.getProperty(configProperty);
-					URL configURL;
-					long lastMod = -1;
-					try {
-						if (config != null) {
-							configURL = QommonsConfig.toUrl(config);
-							URLConnection conn = configURL.openConnection();
-							lastMod = conn.getLastModified();
-						} else
-							configURL = null;
-						if (!Objects.equals(theConfigUrl, configURL) || lastMod > lastConfigCheck) {
-							theConfigUrl = configURL;
-							theConfig.read(theConfigUrl, DefaultDBug.this);
-						}
-					} catch (IOException e) {
-						if (!Objects.equals(theConfigString, config) || !Objects.equals(theConfigError, e.getMessage())) {
-							System.err.println("Could not resolve, read, or parse " + configProperty + " value " + config);
-							e.printStackTrace();
-							theConfigError = e.getMessage();
-						}
-					} catch (DBugParseException | RuntimeException e) {
-						if (!Objects.equals(theConfigString, config) || !Objects.equals(theConfigError, e.getMessage())) {
-							System.err.println("Error initializing or updating config " + config);
-							e.printStackTrace();
-							theConfigError = e.getMessage();
-						}
-					} finally {
-						lastConfigCheck = now;
-						theConfigString = config;
-					}
-				}
+				checkConfig();
 				Runnable action = theActionQueue.poll();
 				while (action != null) {
 					action.run();
@@ -118,6 +87,43 @@ public class DefaultDBug implements DBugImplementation {
 				} catch (InterruptedException e) {}
 			}
 		}, getClass().getSimpleName() + " Reporting").start();
+	}
+
+	void checkConfig() {
+		long now = System.currentTimeMillis();
+		if (now >= lastConfigCheck + configCheckInterval) {
+			// Check for config changes
+			String config = System.getProperty(configProperty);
+			URL configURL;
+			long lastMod = -1;
+			try {
+				if (config != null) {
+					configURL = QommonsConfig.toUrl(config);
+					URLConnection conn = configURL.openConnection();
+					lastMod = conn.getLastModified();
+				} else
+					configURL = null;
+				if (!Objects.equals(theConfigUrl, configURL) || lastMod > lastConfigCheck) {
+					theConfigUrl = configURL;
+					theConfig.read(theConfigUrl, DefaultDBug.this);
+				}
+			} catch (IOException e) {
+				if (!Objects.equals(theConfigString, config) || !Objects.equals(theConfigError, e.getMessage())) {
+					System.err.println("Could not resolve, read, or parse " + configProperty + " value " + config);
+					e.printStackTrace();
+					theConfigError = e.getMessage();
+				}
+			} catch (DBugParseException | RuntimeException e) {
+				if (!Objects.equals(theConfigString, config) || !Objects.equals(theConfigError, e.getMessage())) {
+					System.err.println("Error initializing or updating config " + config);
+					e.printStackTrace();
+					theConfigError = e.getMessage();
+				}
+			} finally {
+				lastConfigCheck = now;
+				theConfigString = config;
+			}
+		}
 	}
 
 	public void addConfig(DBugConfigTemplate config, Consumer<String> onError) {
@@ -279,7 +285,7 @@ public class DefaultDBug implements DBugImplementation {
 	}
 
 	<T> DBugAnchor<T> getPreBuiltAnchor(DefaultDBugAnchorType<T> type, T value) {
-		if (theConfigUrl == null)
+		if (theConfigUrl == null || type.getConfigs().isEmpty())
 			return type.inactive();
 		DBugAnchorHolder holder = theAnchors.compute(new LightStorageKey(type, value), (k, h) -> {
 			if (h == null || !h.hold())
@@ -292,7 +298,7 @@ public class DefaultDBug implements DBugImplementation {
 	}
 
 	<T> DBugAnchorBuilder<T> debug(DefaultDBugAnchorType<T> type, T value) {
-		if (theConfigUrl == null)
+		if (theConfigUrl == null || type.getConfigs().isEmpty())
 			return new PreResolvedAnchorBuilder<>(type.inactive());
 		DBugAnchorHolder holder = theAnchors.compute(new LightStorageKey(type, value), (k, h) -> {
 			if (h == null || !h.hold())

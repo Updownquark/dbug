@@ -3,6 +3,7 @@ package org.dbug.reporters;
 import org.dbug.DBugEvent;
 import org.dbug.config.DBugEventReporter;
 import org.qommons.BreakpointHere;
+import org.qommons.Transaction;
 import org.qommons.config.QommonsConfig;
 
 public class BreakpointReporter implements DBugEventReporter {
@@ -31,25 +32,18 @@ public class BreakpointReporter implements DBugEventReporter {
 	}
 
 	@Override
-	public void eventBegun(DBugEvent<?> event) {
+	public Transaction eventBegun(DBugEvent<?> event) {
 		switch (theType) {
 		case BEGIN:
-		case BOTH:
 			BreakpointHere.breakpoint();
 			break;
-		default:
-		}
-	}
-
-	@Override
-	public void eventEnded(DBugEvent<?> event) {
-		switch (theType) {
 		case END:
+			return () -> BreakpointHere.breakpoint();
 		case BOTH:
 			BreakpointHere.breakpoint();
-			break;
-		default:
+			return () -> BreakpointHere.breakpoint();
 		}
+		throw new IllegalStateException("Unrecognized breakpoint type " + theType);
 	}
 
 	@Override

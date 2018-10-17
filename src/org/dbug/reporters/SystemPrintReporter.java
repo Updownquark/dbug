@@ -9,11 +9,12 @@ import java.util.regex.Pattern;
 import org.dbug.DBug;
 import org.dbug.DBugEvent;
 import org.dbug.config.DBugEventReporter;
+import org.qommons.Transaction;
 import org.qommons.collect.ParameterSet.ParameterMap;
 import org.qommons.config.QommonsConfig;
 
 public class SystemPrintReporter implements DBugEventReporter {
-	static final Pattern PRINT_VAL_REF = Pattern.compile("[$][{](?<name>[a-zA-Z0-9_]+)[}]");
+	public static final Pattern PRINT_VAL_REF = Pattern.compile("[$][{](?<name>[a-zA-Z0-9_]+)[}]");
 
 	private final ThreadLocal<Integer> theIndentAmount = ThreadLocal.withInitial(() -> 0);
 
@@ -45,14 +46,10 @@ public class SystemPrintReporter implements DBugEventReporter {
 	}
 
 	@Override
-	public void eventBegun(DBugEvent<?> event) {
+	public Transaction eventBegun(DBugEvent<?> event) {
 		eventOccurred(event);
 		theIndentAmount.set(theIndentAmount.get() + 1);
-	}
-
-	@Override
-	public void eventEnded(DBugEvent<?> event) {
-		theIndentAmount.set(theIndentAmount.get() - 1);
+		return () -> theIndentAmount.set(theIndentAmount.get() - 1);
 	}
 
 	private static void indent(StringBuilder str, int amount, String indentStr) {

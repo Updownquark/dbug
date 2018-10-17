@@ -1,6 +1,7 @@
 package org.dbug.config;
 
 import org.dbug.DBugEvent;
+import org.qommons.Transaction;
 import org.qommons.config.QommonsConfig;
 
 public interface DBugEventReporter {
@@ -8,9 +9,7 @@ public interface DBugEventReporter {
 
 	void eventOccurred(DBugEvent<?> event);
 
-	void eventBegun(DBugEvent<?> event);
-
-	void eventEnded(DBugEvent<?> event);
+	Transaction eventBegun(DBugEvent<?> event);
 
 	void close();
 }

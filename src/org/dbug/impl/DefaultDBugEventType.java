@@ -12,11 +12,13 @@ import com.google.common.reflect.TypeToken;
 public class DefaultDBugEventType<T> implements DBugEventType<T> {
 	private final DefaultDBugAnchorType<T> theAnchorType;
 	private final String theEventName;
+	private final int theEventIndex;
 	private final ParameterMap<TypeToken<?>> theFields;
 
-	public DefaultDBugEventType(DefaultDBugAnchorType<T> anchorType, String eventName, Map<String, TypeToken<?>> fields) {
+	public DefaultDBugEventType(DefaultDBugAnchorType<T> anchorType, String eventName, int eventIndex, Map<String, TypeToken<?>> fields) {
 		theAnchorType = anchorType;
 		theEventName = eventName;
+		theEventIndex = eventIndex;
 		ParameterMap<TypeToken<?>> fieldsMap = ParameterSet.of(fields.keySet()).createMap();
 		for (Map.Entry<String, TypeToken<?>> field : fields.entrySet())
 			fieldsMap.put(field.getKey(), field.getValue());
@@ -31,6 +33,11 @@ public class DefaultDBugEventType<T> implements DBugEventType<T> {
 	@Override
 	public String getEventName() {
 		return theEventName;
+	}
+
+	@Override
+	public int getEventIndex() {
+		return theEventIndex;
 	}
 
 	@Override

@@ -69,8 +69,9 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 		theDynamicValues = dynamicValues.unmodifiable();
 
 		ParameterMap<DefaultDBugEventType<A>> eventTypeMap = ParameterSet.of(eventTypes.keySet()).createMap();
-		for (Map.Entry<String, Map<String, TypeToken<?>>> eventType : eventTypes.entrySet()) {
-			eventTypeMap.put(eventType.getKey(), new DefaultDBugEventType<>(this, eventType.getKey(), eventType.getValue()));
+		for (int i = 0; i < eventTypeMap.keySet().size(); i++) {
+			String eventName = eventTypeMap.keySet().get(i);
+			eventTypeMap.put(i, new DefaultDBugEventType<>(this, eventName, i, eventTypes.get(eventName)));
 		}
 		theEventTypes = eventTypeMap.unmodifiable();
 
@@ -179,10 +180,11 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 	}
 
 	private DBugConfig<A> parseConfig(DBugConfigTemplate config, Consumer<String> onError) {
+		DBugConfig<A>[] configHolder = new DBugConfig[1];
 		// Parse the anchor variables first
 		ParameterMap<DBugConfig.DBugConfigVariable<A, ?>> variables = parseVariables(config, onError);
 		// Parse the events
-		ParameterMap<DBugConfig.DBugEventConfig<A>> events = parseEvents(config, variables, onError);
+		ParameterMap<DBugConfig.DBugEventConfig<A>> events = parseEvents(config, variables, onError, configHolder);
 		// Parse the condition last
 		boolean[] valid = new boolean[] { true };
 		DBugParseEnv<A> env = new DBugParseEnv<>(this, null, config, null, variables, null, err -> {
@@ -203,7 +205,8 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 				+ condition.getResultType() + ")");
 		}
 		if (valid[0])
-			return new DBugConfig<>(config, this, variables, new DBugConfigVariable<>(null, (Expression<A, Boolean>) condition,
+			return configHolder[0] = new DBugConfig<>(config, this, variables,
+				new DBugConfigVariable<>(null, (Expression<A, Boolean>) condition,
 				env.getDynamicDependencies(), env.getConfigVariableDependencies()), events);
 		else
 			return null;
@@ -245,7 +248,7 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 	}
 
 	private ParameterMap<DBugConfig.DBugEventConfig<A>> parseEvents(DBugConfigTemplate config,
-		ParameterMap<DBugConfig.DBugConfigVariable<A, ?>> variables, Consumer<String> onError) {
+		ParameterMap<DBugConfig.DBugConfigVariable<A, ?>> variables, Consumer<String> onError, DBugConfig<A>[] configHolder) {
 		ParameterMap<DBugConfigTemplate.DBugEventConfigTemplate> eventTemplates = config.getEvents();
 		ParameterMap<DBugConfig.DBugEventConfig<A>> events = theEventTypes.keySet().createMap();
 		for (int i = 0; i < eventTemplates.keySet().size(); i++) {
@@ -310,7 +313,8 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 			if (valid[0])
 				events.put(ei, new DBugConfig.DBugEventConfig<>(event, eventType, eventVars, condition == null ? null
 					: new DBugEventVariable<>(eventType, null, -1, (Expression<A, Boolean>) condition,
-						env.getEventVariableDependencies())));
+						env.getEventVariableDependencies()),
+					configHolder));
 		}
 		return events;
 	}
