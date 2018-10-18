@@ -2,8 +2,8 @@ package org.dbug.expression;
 
 import java.util.Optional;
 
-import org.dbug.DBugEvent;
 import org.dbug.config.DBugConfiguredAnchor;
+import org.dbug.config.DBugConfigEvent;
 
 import com.google.common.reflect.TypeToken;
 
@@ -16,7 +16,7 @@ public interface Expression<A, T> {
 
 	TypeToken<T> getResultType();
 
-	T evaluate(DBugEvent<A> event) throws DBugParseException;
+	T evaluate(DBugConfigEvent<A> event) throws DBugParseException;
 
 	Expression<A, ? extends T> given(DBugConfiguredAnchor<A> anchor, boolean evalDynamic, boolean cacheable) throws DBugParseException;
 }

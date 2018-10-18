@@ -6,8 +6,8 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Objects;
 
-import org.dbug.DBugEvent;
 import org.dbug.config.DBugConfiguredAnchor;
+import org.dbug.config.DBugConfigEvent;
 
 import com.google.common.reflect.TypeToken;
 
@@ -34,7 +34,7 @@ public class MethodExpression<A, S, T> implements Expression<A, T> {
 	}
 
 	@Override
-	public T evaluate(DBugEvent<A> event) throws DBugParseException {
+	public T evaluate(DBugConfigEvent<A> event) throws DBugParseException {
 		S source;
 		if ((theMethod.getModifiers() & Modifier.STATIC) == 0) {
 			source = theSource.evaluate(event);

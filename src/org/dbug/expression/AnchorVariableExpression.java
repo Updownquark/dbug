@@ -3,10 +3,10 @@ package org.dbug.expression;
 import java.util.Objects;
 
 import org.dbug.DBugAnchorType;
-import org.dbug.DBugEvent;
 import org.dbug.DBugEventType;
 import org.dbug.DBugVariableType;
 import org.dbug.config.DBugConfiguredAnchor;
+import org.dbug.config.DBugConfigEvent;
 
 import com.google.common.reflect.TypeToken;
 
@@ -37,7 +37,7 @@ public class AnchorVariableExpression<A, T> implements Expression<A, T> {
 	}
 
 	@Override
-	public T evaluate(DBugEvent<A> event) {
+	public T evaluate(DBugConfigEvent<A> event) {
 		switch (level) {
 		case STATIC:
 			return (T) event.getAnchor().getStaticValues().get(theParameterIndex);

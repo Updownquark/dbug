@@ -2,8 +2,8 @@ package org.dbug.expression;
 
 import java.util.Objects;
 
-import org.dbug.DBugEvent;
 import org.dbug.config.DBugConfiguredAnchor;
+import org.dbug.config.DBugConfigEvent;
 import org.observe.util.TypeTokens;
 
 import com.google.common.reflect.TypeToken;
@@ -34,7 +34,7 @@ public class ConstantExpression<A, T> implements Expression<A, T> {
 	}
 
 	@Override
-	public T evaluate(DBugEvent<A> event) {
+	public T evaluate(DBugConfigEvent<A> event) {
 		return value;
 	}
 

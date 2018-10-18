@@ -168,7 +168,7 @@ public class DBugConfigSet {
 			throw new DBugParseException("Error parsing condition for " + className, e);
 		}
 
-		List<DBugEventReporter> globalReporters = new ArrayList<>(config.subConfigs("reporter").length);
+		List<DBugEventReporter<?, ?, ?, ?>> globalReporters = new ArrayList<>(config.subConfigs("reporter").length);
 		for (QommonsConfig repConfig : config.subConfigs("reporter")) {
 			String name = repConfig.get("name");
 			EventReporterHolder holder = theReportersByName.get(name);
@@ -177,9 +177,10 @@ public class DBugConfigSet {
 			globalReporters.add(holder.reporter);
 		}
 
+		DBugConfigTemplate[] template = new DBugConfigTemplate[1];
 		Map<String, DBugEventConfigTemplate> events = new LinkedHashMap<>();
 		for (QommonsConfig evtConfig : config.subConfigs("event")) {
-			DBugEventConfigTemplate evt = parseEvent(globalReporters, className, evtConfig);
+			DBugEventConfigTemplate evt = parseEvent(globalReporters, className, evtConfig, template);
 			if (events.put(evtConfig.get("name"), evt) != null)
 				throw new DBugParseException("Duplicate events " + evtConfig.get("name"));
 		}
@@ -188,7 +189,8 @@ public class DBugConfigSet {
 			evtMap.put(i, events.get(evtMap.keySet().get(i)));
 		events = null;
 
-		return new DBugConfigTemplate(id, className, varMap.unmodifiable(), condition, Collections.unmodifiableList(globalReporters),
+		return template[0] = new DBugConfigTemplate(id, className, varMap.unmodifiable(), condition,
+			Collections.unmodifiableList(globalReporters),
 			evtMap.unmodifiable());
 	}
 
@@ -210,7 +212,9 @@ public class DBugConfigSet {
 			return ExpressionParser.compile(subConfig.getValue());
 	}
 
-	private DBugEventConfigTemplate parseEvent(List<DBugEventReporter> globalReporters, String configName, QommonsConfig evtConfig)
+	private DBugEventConfigTemplate parseEvent(List<DBugEventReporter<?, ?, ?, ?>> globalReporters, String configName,
+		QommonsConfig evtConfig,
+		DBugConfigTemplate[] template)
 		throws DBugParseException {
 		String name = evtConfig.get("name");
 		Map<String, DBugAntlrExpression> variables = new LinkedHashMap<>();
@@ -235,7 +239,7 @@ public class DBugConfigSet {
 			throw new DBugParseException("Error parsing condition for event " + configName + "." + name, e);
 		}
 
-		List<DBugEventReporter> evtReporters = new ArrayList<>(evtConfig.subConfigs("reporter").length);
+		List<DBugEventReporter<?, ?, ?, ?>> evtReporters = new ArrayList<>(evtConfig.subConfigs("reporter").length);
 		for (QommonsConfig repConfig : evtConfig.subConfigs("reporter")) {
 			String reporterName = repConfig.get("name");
 			EventReporterHolder holder = theReportersByName.get(reporterName);
@@ -245,13 +249,13 @@ public class DBugConfigSet {
 		}
 
 		return new DBugEventConfigTemplate(globalReporters, name, varMap.unmodifiable(), condition,
-			Collections.unmodifiableList(evtReporters));
+			Collections.unmodifiableList(evtReporters), template);
 	}
 
 	private static class EventReporterHolder {
 		final String name;
 		final QommonsConfig config;
-		final DBugEventReporter reporter;
+		final DBugEventReporter<?, ?, ?, ?> reporter;
 
 		EventReporterHolder(QommonsConfig config) throws DBugParseException {
 			this.name = config.get("name");

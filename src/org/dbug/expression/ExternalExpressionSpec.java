@@ -10,8 +10,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.antlr.v4.runtime.ParserRuleContext;
-import org.dbug.DBugEvent;
 import org.dbug.config.DBugConfiguredAnchor;
+import org.dbug.config.DBugConfigEvent;
 import org.observe.util.TypeTokens;
 
 import com.google.common.reflect.TypeToken;
@@ -92,7 +92,7 @@ public class ExternalExpressionSpec extends DBugAntlrExpression {
 		}
 
 		@Override
-		public T evaluate(DBugEvent<A> event) throws DBugParseException {
+		public T evaluate(DBugConfigEvent<A> event) throws DBugParseException {
 			Object[] args = new Object[theArgs.size()];
 			for (int i = 0; i < args.length; i++)
 				args[i] = theArgs.get(i).evaluate(event);

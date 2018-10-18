@@ -3,8 +3,8 @@ package org.dbug.expression;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 
-import org.dbug.DBugEvent;
 import org.dbug.config.DBugConfiguredAnchor;
+import org.dbug.config.DBugConfigEvent;
 import org.observe.util.TypeTokens;
 
 import com.google.common.reflect.TypeToken;
@@ -24,7 +24,7 @@ public class ArrayInitializerByValueExpression<A, T> implements Expression<A, T>
 	}
 
 	@Override
-	public T evaluate(DBugEvent<A> event) throws DBugParseException {
+	public T evaluate(DBugConfigEvent<A> event) throws DBugParseException {
 		Object array = Array.newInstance(TypeTokens.getRawType(theType).getComponentType(), theElements.length);
 		for (int i = 0; i < theElements.length; i++)
 			Array.set(array, i, theElements[i].evaluate(event));

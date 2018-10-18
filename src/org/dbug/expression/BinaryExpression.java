@@ -1,7 +1,7 @@
 package org.dbug.expression;
 
-import org.dbug.DBugEvent;
 import org.dbug.config.DBugConfiguredAnchor;
+import org.dbug.config.DBugConfigEvent;
 
 import com.google.common.reflect.TypeToken;
 
@@ -30,7 +30,7 @@ public abstract class BinaryExpression<T, A, B, X> implements Expression<T, X> {
 	}
 
 	@Override
-	public X evaluate(DBugEvent<T> event) throws DBugParseException {
+	public X evaluate(DBugConfigEvent<T> event) throws DBugParseException {
 		A leftVal = theLeft.evaluate(event);
 		if (!needsRightArg(leftVal))
 			return evaluateLeftOnly(leftVal);

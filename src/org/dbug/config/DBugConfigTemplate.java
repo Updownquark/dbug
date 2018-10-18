@@ -11,10 +11,10 @@ public class DBugConfigTemplate {
 	private final ParameterMap<DBugConfigTemplateVariable> theVariables;
 	private final DBugAntlrExpression theCondition;
 	private final ParameterMap<DBugEventConfigTemplate> theEvents;
-	private final List<DBugEventReporter> theReporters;
+	private final List<DBugEventReporter<?, ?, ?, ?>> theReporters;
 
 	public DBugConfigTemplate(String id, String className, ParameterMap<DBugConfigTemplateVariable> variables,
-		DBugAntlrExpression condition, List<DBugEventReporter> reporters, ParameterMap<DBugEventConfigTemplate> events) {
+		DBugAntlrExpression condition, List<DBugEventReporter<?, ?, ?, ?>> reporters, ParameterMap<DBugEventConfigTemplate> events) {
 		theID = id;
 		theClassName = className;
 		theVariables = variables;
@@ -47,7 +47,7 @@ public class DBugConfigTemplate {
 		return theEvents;
 	}
 
-	public List<DBugEventReporter> getReporters() {
+	public List<DBugEventReporter<?, ?, ?, ?>> getReporters() {
 		return theReporters;
 	}
 
@@ -69,26 +69,33 @@ public class DBugConfigTemplate {
 	}
 
 	public static class DBugEventConfigTemplate {
-		private List<DBugEventReporter> globalReporters;
+		private List<DBugEventReporter<?, ?, ?, ?>> globalReporters;
 		public final String eventName;
 		public final ParameterMap<DBugAntlrExpression> eventVariables;
 		public final DBugAntlrExpression condition;
-		public final List<DBugEventReporter> eventReporters;
+		public final List<DBugEventReporter<?, ?, ?, ?>> eventReporters;
+		private final DBugConfigTemplate[] template;
 
-		public DBugEventConfigTemplate(List<DBugEventReporter> globalReporters, String eventName,
-			ParameterMap<DBugAntlrExpression> eventVariables, DBugAntlrExpression condition, List<DBugEventReporter> eventReporters) {
+		public DBugEventConfigTemplate(List<DBugEventReporter<?, ?, ?, ?>> globalReporters, String eventName,
+			ParameterMap<DBugAntlrExpression> eventVariables, DBugAntlrExpression condition,
+			List<DBugEventReporter<?, ?, ?, ?>> eventReporters, DBugConfigTemplate[] template) {
 			this.globalReporters = globalReporters;
 			this.eventName = eventName;
 			this.eventVariables = eventVariables;
 			this.condition = condition;
 			this.eventReporters = eventReporters;
+			this.template = template;
+		}
+
+		public DBugConfigTemplate getTemplate() {
+			return template[0];
 		}
 
 		public int getReporterCount() {
 			return globalReporters.size() + eventReporters.size();
 		}
 
-		public DBugEventReporter getReporter(int index) {
+		public DBugEventReporter<?, ?, ?, ?> getReporter(int index) {
 			int erIndex = index - globalReporters.size();
 			if (erIndex < 0)
 				return globalReporters.get(index);

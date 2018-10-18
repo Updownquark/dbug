@@ -15,10 +15,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 
-import org.dbug.DBugEvent;
 import org.dbug.config.DBugConfig.DBugEventConfig;
 import org.dbug.config.DBugConfig.DBugEventVariable;
-import org.dbug.config.DBugEventReporter;
+import org.dbug.config.DBugConfigEvent;
+import org.dbug.config.SimpleDBugEventReporter;
 import org.dbug.expression.ConstantExpression;
 import org.observe.util.TypeTokens;
 import org.qommons.QommonsUtils;
@@ -28,7 +28,7 @@ import org.qommons.collect.ParameterSet;
 import org.qommons.collect.ParameterSet.ParameterMap;
 import org.qommons.config.QommonsConfig;
 
-public class ProfilingReporter implements DBugEventReporter {
+public class ProfilingReporter implements SimpleDBugEventReporter {
 	private static final Object COUNT_PLACEHOLDER = new Object() {
 		@Override
 		public String toString() {
@@ -83,13 +83,13 @@ public class ProfilingReporter implements DBugEventReporter {
 	}
 
 	@Override
-	public void eventOccurred(DBugEvent<?> event) {
+	public void eventOccurred(DBugConfigEvent<?> event) {
 		// We don't care about instantaneous events--nothing to profile
 		// TODO Maybe one day we can gather information on the time between events like this?
 	}
 
 	@Override
-	public Transaction eventBegun(DBugEvent<?> event) {
+	public Transaction eventBegun(DBugConfigEvent<?> event) {
 		ProfilingThread pt=theUnfinishedStacks.get();
 		Transaction nodeT= pt.eventBegun(event,
 			theEventDescrip.computeIfAbsent(event.getEventConfig(), ProfilingReporter::buildEventDescrip));
@@ -168,7 +168,7 @@ public class ProfilingReporter implements DBugEventReporter {
 		}
 		String groupingString = ((ConstantExpression<?, String>) profileConfigVar.expression).value;
 		Matcher m = SystemPrintReporter.PRINT_VAL_REF.matcher(groupingString);
-		Map<String, Function<DBugEvent<?>, Object>> map = new HashMap<>();
+		Map<String, Function<DBugConfigEvent<?>, Object>> map = new HashMap<>();
 		ArrayList<Object> groupingPrint = new ArrayList<>();
 		int lastEnd = 0;
 		while (m.find()) {
@@ -185,7 +185,7 @@ public class ProfilingReporter implements DBugEventReporter {
 			else if (name.equals("activeDuration"))
 				groupingPrint.add(ACTIVE_DURATION_PLACEHOLDER);
 			else {
-				Function<DBugEvent<?>, Object> getter = getReference(eventConfig, name);
+				Function<DBugConfigEvent<?>, Object> getter = getReference(eventConfig, name);
 				if (getter == null)
 					groupingPrint.add(m.group());
 				else {
@@ -198,7 +198,7 @@ public class ProfilingReporter implements DBugEventReporter {
 		}
 		if (lastEnd < groupingString.length())
 			groupingPrint.add(groupingString.substring(lastEnd));
-		ParameterMap<Function<DBugEvent<?>, Object>> groupValues = ParameterSet.of(map.keySet()).createMap();
+		ParameterMap<Function<DBugConfigEvent<?>, Object>> groupValues = ParameterSet.of(map.keySet()).createMap();
 		for (int i = 0; i < groupingPrint.size(); i++) {
 			if (groupingPrint.get(i) instanceof String[]) {
 				String valName = ((String[]) groupingPrint.get(i))[0];
@@ -210,7 +210,7 @@ public class ProfilingReporter implements DBugEventReporter {
 		return new EventProfileConfig(groupingPrint, groupValues.unmodifiable());
 	}
 
-	private static Function<DBugEvent<?>, Object> getReference(DBugEventConfig<?> eventConfig, String valName) {
+	private static Function<DBugConfigEvent<?>, Object> getReference(DBugEventConfig<?> eventConfig, String valName) {
 		if (valName.equals("value"))
 			return event -> event.getAnchor().getValue();
 		else if (valName.equals("event"))
@@ -251,9 +251,9 @@ public class ProfilingReporter implements DBugEventReporter {
 		static final EventProfileConfig EMPTY = new EventProfileConfig(Collections.emptyList(), ParameterSet.EMPTY.createMap());
 
 		final List<Object> groupingPrint;
-		final ParameterMap<Function<DBugEvent<?>, Object>> groupValues;
+		final ParameterMap<Function<DBugConfigEvent<?>, Object>> groupValues;
 
-		EventProfileConfig(List<Object> groupingPrint, ParameterMap<Function<DBugEvent<?>, Object>> groupValues) {
+		EventProfileConfig(List<Object> groupingPrint, ParameterMap<Function<DBugConfigEvent<?>, Object>> groupValues) {
 			this.groupingPrint = groupingPrint;
 			this.groupValues = groupValues;
 		}
@@ -294,7 +294,7 @@ public class ProfilingReporter implements DBugEventReporter {
 			theDuration.accumulateAndGet(other.theDuration.get(), Duration::plus);
 		}
 
-		Transaction begin(DBugEvent<?> event) {
+		Transaction begin(DBugConfigEvent<?> event) {
 			long now = System.currentTimeMillis();
 			NodeActivity oldActivity = theActivity.get();
 			NodeActivity newActivity = oldActivity.with(now);
@@ -399,7 +399,7 @@ public class ProfilingReporter implements DBugEventReporter {
 			theStack = new LinkedList<>();
 		}
 
-		Transaction eventBegun(DBugEvent<?> event, EventProfileConfig config) {
+		Transaction eventBegun(DBugConfigEvent<?> event, EventProfileConfig config) {
 			ParameterMap<Object> group = config.groupValues.keySet().createMap();
 			for (int i = 0; i < group.keySet().size(); i++)
 				group.put(i, config.groupValues.get(i).apply(event));

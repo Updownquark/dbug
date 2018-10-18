@@ -1,12 +1,12 @@
 package org.dbug.reporters;
 
-import org.dbug.DBugEvent;
-import org.dbug.config.DBugEventReporter;
+import org.dbug.config.DBugConfigEvent;
+import org.dbug.config.SimpleDBugEventReporter;
 import org.qommons.BreakpointHere;
 import org.qommons.Transaction;
 import org.qommons.config.QommonsConfig;
 
-public class BreakpointReporter implements DBugEventReporter {
+public class BreakpointReporter implements SimpleDBugEventReporter {
 	private static enum Type {
 		BEGIN, END, BOTH;
 	}
@@ -27,12 +27,12 @@ public class BreakpointReporter implements DBugEventReporter {
 	}
 
 	@Override
-	public void eventOccurred(DBugEvent<?> event) {
+	public void eventOccurred(DBugConfigEvent<?> event) {
 		BreakpointHere.breakpoint();
 	}
 
 	@Override
-	public Transaction eventBegun(DBugEvent<?> event) {
+	public Transaction eventBegun(DBugConfigEvent<?> event) {
 		switch (theType) {
 		case BEGIN:
 			BreakpointHere.breakpoint();

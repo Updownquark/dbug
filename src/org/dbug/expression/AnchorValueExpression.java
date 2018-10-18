@@ -1,8 +1,8 @@
 package org.dbug.expression;
 
 import org.dbug.DBugAnchorType;
-import org.dbug.DBugEvent;
 import org.dbug.config.DBugConfiguredAnchor;
+import org.dbug.config.DBugConfigEvent;
 import org.observe.util.TypeTokens;
 
 import com.google.common.reflect.TypeToken;
@@ -20,7 +20,7 @@ public class AnchorValueExpression<A> implements Expression<A, A> {
 	}
 
 	@Override
-	public A evaluate(DBugEvent<A> event) throws DBugParseException {
+	public A evaluate(DBugConfigEvent<A> event) throws DBugParseException {
 		return event.getAnchor().getValue();
 	}
 

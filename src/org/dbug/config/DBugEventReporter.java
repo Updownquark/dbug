@@ -1,15 +1,19 @@
 package org.dbug.config;
 
-import org.dbug.DBugEvent;
+import org.dbug.config.DBugConfig.DBugEventConfig;
 import org.qommons.Transaction;
 import org.qommons.config.QommonsConfig;
 
-public interface DBugEventReporter {
+public interface DBugEventReporter<AT, ET, A, E> {
 	void configure(QommonsConfig config);
 
-	void eventOccurred(DBugEvent<?> event);
+	AT compileForAnchorConfig(DBugConfig<?> anchor);
+	ET compileForEventType(AT compiledAnchorType, DBugEventConfig<?> event);
+	A compileForConfiguredAnchor(AT compiledAnchorType, DBugConfiguredAnchor<?> anchor);
+	E compileForEvent(A compiledAnchor, ET compiledEventType, long eventId);
 
-	Transaction eventBegun(DBugEvent<?> event);
+	void eventOccurred(DBugConfigEvent<?> event, A compiledAnchor, E compiledEvent);
+	Transaction eventBegun(DBugConfigEvent<?> event, A compiledAnchor, E compiledEvent);
 
 	void close();
 }

@@ -1,7 +1,7 @@
 package org.dbug.expression;
 
-import org.dbug.DBugEvent;
 import org.dbug.config.DBugConfiguredAnchor;
+import org.dbug.config.DBugConfigEvent;
 import org.observe.util.TypeTokens;
 
 import com.google.common.reflect.TypeToken;
@@ -19,7 +19,7 @@ public class TypeExpression<A, T> implements Expression<A, T> {
 	}
 
 	@Override
-	public T evaluate(DBugEvent<A> event) throws DBugParseException {
+	public T evaluate(DBugConfigEvent<A> event) throws DBugParseException {
 		throw new DBugParseException("Type expressions (" + this + ") do not have a value");
 	}
 

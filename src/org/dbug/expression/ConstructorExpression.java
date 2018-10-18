@@ -4,8 +4,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 
-import org.dbug.DBugEvent;
 import org.dbug.config.DBugConfiguredAnchor;
+import org.dbug.config.DBugConfigEvent;
 
 import com.google.common.reflect.TypeToken;
 
@@ -26,7 +26,7 @@ public class ConstructorExpression<A, T> implements Expression<A, T> {
 	}
 
 	@Override
-	public T evaluate(DBugEvent<A> event) throws DBugParseException {
+	public T evaluate(DBugConfigEvent<A> event) throws DBugParseException {
 		Object[] args = new Object[theArguments.length];
 		for (int a = 0; a < args.length; a++)
 			args[a] = theArguments[a].evaluate(event);

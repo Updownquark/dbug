@@ -50,13 +50,15 @@ public class DefaultDBugEventBuilder<T> implements DBugEventBuilder {
 	public Transaction begin() {
 		assertComplete();
 		return theAnchor.beginEvent(//
-			new DBugEventTemplate<>(theDBug.getNextEventId(), theAnchor, theType, theEventProperties.unmodifiable(), true));
+			new DBugEventTemplate<>(theDBug.getProcess(), theDBug.getNextEventId(), theAnchor, theType,
+				theAnchor.getDynamicValues().copy().unmodifiable(), theEventProperties.unmodifiable(), true));
 	}
 
 	@Override
 	public void occurred() {
 		assertComplete();
 		theAnchor.eventOccurred(//
-			new DBugEventTemplate<>(theDBug.getNextEventId(), theAnchor, theType, theEventProperties.unmodifiable(), false));
+			new DBugEventTemplate<>(theDBug.getProcess(), theDBug.getNextEventId(), theAnchor, theType,
+				theAnchor.getDynamicValues().copy().unmodifiable(), theEventProperties.unmodifiable(), false));
 	}
 }

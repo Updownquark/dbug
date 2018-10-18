@@ -17,6 +17,7 @@ public class DBugConfig<A> {
 	private final ParameterMap<DBugConfigVariable<A, ?>> theVariables;
 	private final DBugConfigVariable<A, Boolean> theCondition;
 	private final ParameterMap<DBugEventConfig<A>> theEvents;
+	private final Object[] theReporterCompiledAnchors;
 
 	public DBugConfig(DBugConfigTemplate template, DBugAnchorType<A> anchorType, ParameterMap<DBugConfigVariable<A, ?>> variables,
 		DBugConfigVariable<A, Boolean> condition, ParameterMap<DBugEventConfig<A>> events) {
@@ -25,6 +26,7 @@ public class DBugConfig<A> {
 		theVariables = variables;
 		theCondition = condition;
 		theEvents = events;
+		theReporterCompiledAnchors = new Object[template.getReporters().size()];
 	}
 
 	public DBugConfigTemplate getTemplate() {
@@ -47,8 +49,15 @@ public class DBugConfig<A> {
 		return theEvents;
 	}
 
-	public List<DBugEventReporter> getReporters() {
+	public List<DBugEventReporter<?, ?, ?, ?>> getReporters() {
 		return theTemplate.getReporters();
+	}
+
+	public Object getReporterCompiledAnchor(int index) {
+		Object anchor = theReporterCompiledAnchors[index];
+		if (anchor == null)
+			theReporterCompiledAnchors[index] = anchor = theTemplate.getReporters().get(index).compileForAnchorConfig(this);
+		return anchor;
 	}
 
 	@Override
@@ -99,6 +108,8 @@ public class DBugConfig<A> {
 		public final ParameterMap<DBugEventVariable<A, ?>> eventVariables;
 		public final DBugEventVariable<A, Boolean> condition;
 		private final DBugConfig<A>[] theConfig;
+		private final Object[] theEventReporterCompiledAnchors;
+		private final Object[] theReporterCompiledEvents;
 
 		public DBugEventConfig(DBugEventConfigTemplate template, DefaultDBugEventType<A> eventType,
 			ParameterMap<DBugEventVariable<A, ?>> eventVariables, DBugEventVariable<A, Boolean> condition, DBugConfig<A>[] config) {
@@ -107,10 +118,36 @@ public class DBugConfig<A> {
 			this.eventVariables = eventVariables;
 			this.condition = condition;
 			theConfig = config;
+			theEventReporterCompiledAnchors = new Object[template.getReporterCount() - template.getTemplate().getReporters().size()];
+			theReporterCompiledEvents = new Object[template.getReporterCount()];
 		}
 
 		public DBugConfig<A> getConfig() {
 			return theConfig[0];
+		}
+
+		public Object getReporterCompiledAnchor(int index) {
+			Object compiledAnchor;
+			int evtRIndex = index - template.getTemplate().getReporters().size();
+			if (evtRIndex < 0)
+				compiledAnchor = theConfig[0].getReporterCompiledAnchor(index);
+			else {
+				compiledAnchor = theEventReporterCompiledAnchors[evtRIndex];
+				if (compiledAnchor == null)
+					theEventReporterCompiledAnchors[evtRIndex] = compiledAnchor = template.getReporter(index)
+						.compileForAnchorConfig(theConfig[0]);
+			}
+			return compiledAnchor;
+		}
+
+		public Object getReporterCompiledEvent(int index) {
+			Object event = theReporterCompiledEvents[index];
+			if (event == null) {
+				Object compiledAnchor = getReporterCompiledAnchor(index);
+				theReporterCompiledEvents[index] = event = ((DBugEventReporter<Object, ?, ?, ?>) template.getReporter(index))
+					.compileForEventType(compiledAnchor, this);
+			}
+			return event;
 		}
 
 		@Override

@@ -1,7 +1,7 @@
 package org.dbug.expression;
 
-import org.dbug.DBugEvent;
 import org.dbug.config.DBugConfiguredAnchor;
+import org.dbug.config.DBugConfigEvent;
 
 import com.google.common.reflect.TypeToken;
 
@@ -25,7 +25,7 @@ public class ConditionalExpression<A, T> implements Expression<A, T> {
 	}
 
 	@Override
-	public T evaluate(DBugEvent<A> event) throws DBugParseException {
+	public T evaluate(DBugConfigEvent<A> event) throws DBugParseException {
 		boolean condition = theCondition.evaluate(event);
 		if (condition)
 			return theAffirmative.evaluate(event);

@@ -7,13 +7,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.dbug.DBug;
-import org.dbug.DBugEvent;
-import org.dbug.config.DBugEventReporter;
+import org.dbug.config.DBugConfigEvent;
+import org.dbug.config.SimpleDBugEventReporter;
 import org.qommons.Transaction;
 import org.qommons.collect.ParameterSet.ParameterMap;
 import org.qommons.config.QommonsConfig;
 
-public class SystemPrintReporter implements DBugEventReporter {
+public class SystemPrintReporter implements SimpleDBugEventReporter {
 	public static final Pattern PRINT_VAL_REF = Pattern.compile("[$][{](?<name>[a-zA-Z0-9_]+)[}]");
 
 	private final ThreadLocal<Integer> theIndentAmount = ThreadLocal.withInitial(() -> 0);
@@ -29,7 +29,7 @@ public class SystemPrintReporter implements DBugEventReporter {
 	}
 
 	@Override
-	public void eventOccurred(DBugEvent<?> event) {
+	public void eventOccurred(DBugConfigEvent<?> event) {
 		List<Object> sequence = new LinkedList<>();
 		sequence.add(theIndentAmount.get());
 		int printValsIndex = event.getEventConfigValues().keySet().indexOf("printValues");
@@ -46,7 +46,7 @@ public class SystemPrintReporter implements DBugEventReporter {
 	}
 
 	@Override
-	public Transaction eventBegun(DBugEvent<?> event) {
+	public Transaction eventBegun(DBugConfigEvent<?> event) {
 		eventOccurred(event);
 		theIndentAmount.set(theIndentAmount.get() + 1);
 		return () -> theIndentAmount.set(theIndentAmount.get() - 1);
@@ -66,7 +66,7 @@ public class SystemPrintReporter implements DBugEventReporter {
 		private final String theText;
 		final List<ReferenceValue> theReferences;
 
-		static PrintedEventWithSpec parse(int indentAmount, String indent, String text, DBugEvent<?> event) {
+		static PrintedEventWithSpec parse(int indentAmount, String indent, String text, DBugConfigEvent<?> event) {
 			PrintedEventWithSpec printed = new PrintedEventWithSpec(indentAmount, indent, text);
 			Matcher m = PRINT_VAL_REF.matcher(text);
 			int c = 0;
@@ -116,7 +116,7 @@ public class SystemPrintReporter implements DBugEventReporter {
 			this.end = end;
 		}
 
-		static ReferenceValue parse(DBugEvent<?> event, Matcher m) {
+		static ReferenceValue parse(DBugConfigEvent<?> event, Matcher m) {
 			String varName = m.group("name");
 			switch (varName) {
 			case "value":
@@ -152,7 +152,7 @@ public class SystemPrintReporter implements DBugEventReporter {
 		}
 	}
 
-	private static void printAllValues(StringBuilder str, DBugEvent<?> event) {
+	private static void printAllValues(StringBuilder str, DBugConfigEvent<?> event) {
 		printStandardValue(str, event, "class", true);
 		str.append(' ');
 		printStandardValue(str, event, "time", true);
@@ -183,7 +183,7 @@ public class SystemPrintReporter implements DBugEventReporter {
 		}
 	}
 
-	private static void printValue(StringBuilder str, DBugEvent<?> event, String value, boolean printLabels) {
+	private static void printValue(StringBuilder str, DBugConfigEvent<?> event, String value, boolean printLabels) {
 		if (printStandardValue(str, event, value, printLabels))
 			return;
 		ParameterMap<Object> values = event.getEventConfigValues();
@@ -210,7 +210,7 @@ public class SystemPrintReporter implements DBugEventReporter {
 			str.append("${").append(value).append('}');
 	}
 
-	private static boolean printStandardValue(StringBuilder str, DBugEvent<?> event, String value, boolean printLabels) {
+	private static boolean printStandardValue(StringBuilder str, DBugConfigEvent<?> event, String value, boolean printLabels) {
 		switch (value) {
 		case "event":
 			if (printLabels)
