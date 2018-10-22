@@ -6,18 +6,20 @@ import org.dbug.expression.DBugAntlrExpression;
 import org.qommons.collect.ParameterSet.ParameterMap;
 
 public class DBugConfigTemplate {
-	private String theID;
+	private final String theID;
+	private final String theSchema;
 	private final String theClassName;
-	private final ParameterMap<DBugConfigTemplateVariable> theVariables;
+	private final ParameterMap<DBugConfigTemplateValue> theValues;
 	private final DBugAntlrExpression theCondition;
 	private final ParameterMap<DBugEventConfigTemplate> theEvents;
-	private final List<DBugEventReporter<?, ?, ?, ?>> theReporters;
+	private final List<DBugEventReporter<?, ?, ?, ?, ?>> theReporters;
 
-	public DBugConfigTemplate(String id, String className, ParameterMap<DBugConfigTemplateVariable> variables,
-		DBugAntlrExpression condition, List<DBugEventReporter<?, ?, ?, ?>> reporters, ParameterMap<DBugEventConfigTemplate> events) {
+	public DBugConfigTemplate(String id, String schema, String className, ParameterMap<DBugConfigTemplateValue> values,
+		DBugAntlrExpression condition, List<DBugEventReporter<?, ?, ?, ?, ?>> reporters, ParameterMap<DBugEventConfigTemplate> events) {
 		theID = id;
+		theSchema = schema;
 		theClassName = className;
-		theVariables = variables;
+		theValues = values;
 		theCondition = condition;
 		theReporters = reporters;
 		theEvents = events;
@@ -27,16 +29,16 @@ public class DBugConfigTemplate {
 		return theID;
 	}
 
-	public void setID(String id) {
-		theID = id;
+	public String getSchema() {
+		return theSchema;
 	}
 
 	public String getClassName() {
 		return theClassName;
 	}
 
-	public ParameterMap<DBugConfigTemplateVariable> getVariables() {
-		return theVariables;
+	public ParameterMap<DBugConfigTemplateValue> getValues() {
+		return theValues;
 	}
 
 	public DBugAntlrExpression getCondition() {
@@ -47,16 +49,16 @@ public class DBugConfigTemplate {
 		return theEvents;
 	}
 
-	public List<DBugEventReporter<?, ?, ?, ?>> getReporters() {
+	public List<DBugEventReporter<?, ?, ?, ?, ?>> getReporters() {
 		return theReporters;
 	}
 
-	public static class DBugConfigTemplateVariable {
+	public static class DBugConfigTemplateValue {
 		public final String varName;
 		public final DBugAntlrExpression expression;
 		public final boolean cacheable;
 
-		public DBugConfigTemplateVariable(String varName, DBugAntlrExpression expression, boolean cacheable) {
+		public DBugConfigTemplateValue(String varName, DBugAntlrExpression expression, boolean cacheable) {
 			this.varName = varName;
 			this.expression = expression;
 			this.cacheable = cacheable;
@@ -69,16 +71,16 @@ public class DBugConfigTemplate {
 	}
 
 	public static class DBugEventConfigTemplate {
-		private List<DBugEventReporter<?, ?, ?, ?>> globalReporters;
+		private List<DBugEventReporter<?, ?, ?, ?, ?>> globalReporters;
 		public final String eventName;
 		public final ParameterMap<DBugAntlrExpression> eventVariables;
 		public final DBugAntlrExpression condition;
-		public final List<DBugEventReporter<?, ?, ?, ?>> eventReporters;
+		public final List<DBugEventReporter<?, ?, ?, ?, ?>> eventReporters;
 		private final DBugConfigTemplate[] template;
 
-		public DBugEventConfigTemplate(List<DBugEventReporter<?, ?, ?, ?>> globalReporters, String eventName,
+		public DBugEventConfigTemplate(List<DBugEventReporter<?, ?, ?, ?, ?>> globalReporters, String eventName,
 			ParameterMap<DBugAntlrExpression> eventVariables, DBugAntlrExpression condition,
-			List<DBugEventReporter<?, ?, ?, ?>> eventReporters, DBugConfigTemplate[] template) {
+			List<DBugEventReporter<?, ?, ?, ?, ?>> eventReporters, DBugConfigTemplate[] template) {
 			this.globalReporters = globalReporters;
 			this.eventName = eventName;
 			this.eventVariables = eventVariables;
@@ -95,7 +97,7 @@ public class DBugConfigTemplate {
 			return globalReporters.size() + eventReporters.size();
 		}
 
-		public DBugEventReporter<?, ?, ?, ?> getReporter(int index) {
+		public DBugEventReporter<?, ?, ?, ?, ?> getReporter(int index) {
 			int erIndex = index - globalReporters.size();
 			if (erIndex < 0)
 				return globalReporters.get(index);

@@ -14,15 +14,16 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.dbug.DBugAnchor;
 import org.dbug.DBugEventBuilder;
 import org.dbug.DBugEventType;
 import org.dbug.DBugProcess;
 import org.dbug.config.DBugConfig;
-import org.dbug.config.DBugConfig.DBugConfigVariable;
+import org.dbug.config.DBugConfig.DBugConfigValue;
 import org.dbug.config.DBugConfig.DBugEventConfig;
-import org.dbug.config.DBugConfig.DBugEventVariable;
+import org.dbug.config.DBugConfig.DBugEventValue;
 import org.dbug.config.DBugConfigEvent;
 import org.dbug.config.DBugConfiguredAnchor;
 import org.dbug.config.DBugEventReporter;
@@ -38,6 +39,7 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 	private final A theValue;
 	private final ParameterMap<Object> theStaticValues;
 	private ParameterMap<Object> theDynamicValues;
+	final IdentityHashMap<DBugEventReporter<?, ?, ?, ?, ?>, Object> theCompiledAnchors;
 
 	final List<DBugConfigInstance> theConfigs;
 	int isActive;
@@ -49,6 +51,7 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		theValue = value;
 		theStaticValues = staticValues;
 		theDynamicValues = dynamicValues;
+		theCompiledAnchors = new IdentityHashMap<>();
 
 		theConfigs = new LinkedList<>();
 		long eventId = -1;
@@ -90,12 +93,12 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		P old = (P) theDynamicValues.put(index, value);
 		long eventId = -1;
 		ParameterMap<Object> dvCopy = null;
-		IdentityHashMap<DBugEventReporter<?, ?, ?, ?>, Object> compiledEvents = null;
+		IdentityHashMap<DBugEventReporter<?, ?, ?, ?, ?>, Object> compiledEvents = null;
 		for (DBugConfigInstance config : theConfigs) {
 			// We want to do only enough work here to figure out if the config is now interested in the anchor given the new dynamic value
 			boolean preActive = !config.condition.error && config.condition.get();
 			BitSet conditionDDs = config.condition.expressionConfig.dynamicDependencies;
-			BitSet conditionCVDs = config.condition.expressionConfig.configVariableDependencies;
+			BitSet conditionCVDs = config.condition.expressionConfig.configValueDependencies;
 			boolean error = false;
 			if (conditionDDs != null && conditionDDs.get(index)) {
 				// The condition may have changed as a result of the new dynamic value
@@ -127,8 +130,8 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 				}
 			}
 			if (preActive && postActive) {
-				DBugEventConfigInstance updateEventConfig = config.events.get(theType.theUpdateEventIndex);
-				if (updateEventConfig != null) {
+				List<DBugEventConfigInstance> updateEventConfigs = config.events.get(theType.theUpdateEventIndex);
+				if (updateEventConfigs != null) {
 					// The config wants to know when any values change
 					if (eventId == -1) {
 						eventId = theDBug.getNextEventId();
@@ -150,13 +153,17 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 					ParameterMap<Object> eventValues = updateEventType.getEventFields().keySet().createMap();
 					eventValues.put("field", property);
 					eventValues.put("variables", varsChanged);
-					ConfigSpecificEvent cse = new ConfigSpecificEvent(//
-						new DBugEventTemplate<>(theDBug.getProcess(), eventId, this, updateEventType, dvCopy, eventValues.unmodifiable(),
-							false), //
-						updateEventConfig);
-					if (compiledEvents == null)
-						compiledEvents = new IdentityHashMap<>();
-					cse.occurred(compiledEvents);
+					eventValues = eventValues.unmodifiable();
+					for (DBugEventConfigInstance evtConfig : updateEventConfigs) {
+						ConfigSpecificEvent cse = new ConfigSpecificEvent(//
+							new DBugEventTemplate<>(theDBug.getProcess(), eventId, this, updateEventType, dvCopy, eventValues, false), //
+							evtConfig);
+						if (cse.active) {
+							if (compiledEvents == null)
+								compiledEvents = new IdentityHashMap<>();
+							cse.occurred(compiledEvents);
+						}
+					}
 				}
 			} else if (postActive)
 				isActive++;
@@ -175,18 +182,25 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 
 	private void fireActive(DBugConfigInstance config, boolean active, String field, Object inactiveValue, long eventId,
 		ParameterMap<Object> dvCopy) {
-		DBugEventConfigInstance activeEventConfig = config.events.get(theType.theActiveEventIndex);
-		if (activeEventConfig != null) {
+		List<DBugEventConfigInstance> activeEventConfigs = config.events.get(theType.theActiveEventIndex);
+		if (!activeEventConfigs.isEmpty()) {
+			IdentityHashMap<DBugEventReporter<?, ?, ?, ?, ?>, Object> compiledEvents = null;
 			DefaultDBugEventType<A> activeEventType = (DefaultDBugEventType<A>) theType.getEventTypes().get(theType.theActiveEventIndex);
 			// The config wants to know when an anchor becomes active or inactive
 			ParameterMap<Object> eventValues = activeEventType.getEventFields().keySet().createMap();
 			eventValues.put("active", active);
 			eventValues.put("field", field);
 			eventValues.put("inactiveFieldValue", inactiveValue);
-			ConfigSpecificEvent cse = new ConfigSpecificEvent(//
-				new DBugEventTemplate<>(theDBug.getProcess(), eventId, this, activeEventType, dvCopy, eventValues.unmodifiable(), false), //
-				activeEventConfig);
-			cse.occurred(new HashMap<>());
+			eventValues = eventValues.unmodifiable();
+			for (DBugEventConfigInstance evtConfig : activeEventConfigs) {
+				ConfigSpecificEvent cse = new ConfigSpecificEvent(//
+					new DBugEventTemplate<>(theDBug.getProcess(), eventId, this, activeEventType, dvCopy, eventValues, false), evtConfig);
+				if (cse.active) {
+					if (compiledEvents == null)
+						compiledEvents = new IdentityHashMap<>();
+					cse.occurred(new HashMap<>());
+				}
+			}
 		}
 	}
 
@@ -204,8 +218,8 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 	}
 
 	public Transaction beginEvent(DBugEventTemplate<A> event) {
-		ConfigSpecificEvent[] configEvents = createConfigEvents(event);
-		IdentityHashMap<DBugEventReporter<?, ?, ?, ?>, Object> compiledEvents = new IdentityHashMap<>();
+		List<ConfigSpecificEvent> configEvents = createConfigEvents(event);
+		IdentityHashMap<DBugEventReporter<?, ?, ?, ?, ?>, Object> compiledEvents = new IdentityHashMap<>();
 		for (ConfigSpecificEvent configEvent : configEvents) {
 			if (configEvent != null)
 				configEvent.begun(compiledEvents);
@@ -219,8 +233,8 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 	}
 
 	public void eventOccurred(DBugEventTemplate<A> event) {
-		ConfigSpecificEvent[] configEvents = createConfigEvents(event);
-		IdentityHashMap<DBugEventReporter<?, ?, ?, ?>, Object> compiledEvents = null;
+		List<ConfigSpecificEvent> configEvents = createConfigEvents(event);
+		IdentityHashMap<DBugEventReporter<?, ?, ?, ?, ?>, Object> compiledEvents = null;
 		for (ConfigSpecificEvent configEvent : configEvents) {
 			if (configEvent != null) {
 				if (compiledEvents == null)
@@ -230,17 +244,19 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		}
 	}
 
-	private synchronized ConfigSpecificEvent[] createConfigEvents(DBugEventTemplate<A> event) {
+	private synchronized List<ConfigSpecificEvent> createConfigEvents(DBugEventTemplate<A> event) {
 		if (isActive == 0)
-			return new DefaultDBugAnchor.ConfigSpecificEvent[0];
-		ConfigSpecificEvent[] configEvents;
-		configEvents = new DefaultDBugAnchor.ConfigSpecificEvent[theConfigs.size()];
-		for (int i = 0; i < configEvents.length; i++) {
-			DBugEventConfigInstance evtConfig = theConfigs.get(i).events.get(event.getType().getEventIndex());
-			if (evtConfig != null) {
-				configEvents[i] = new ConfigSpecificEvent(event, evtConfig);
-				if (!configEvents[i].active)
-					configEvents[i] = null;
+			return Collections.emptyList();
+		List<ConfigSpecificEvent> configEvents = null;
+		for (int i = 0; i < theConfigs.size(); i++) {
+			List<DBugEventConfigInstance> evtConfigs = theConfigs.get(i).events.get(event.getType().getEventIndex());
+			for (DBugEventConfigInstance evtConfig : evtConfigs) {
+				ConfigSpecificEvent cse = new ConfigSpecificEvent(event, evtConfig);
+				if (cse.active) {
+					if (configEvents == null)
+						configEvents = new ArrayList<>(theConfigs.size());
+					configEvents.add(cse);
+				}
 			}
 		}
 		return configEvents;
@@ -316,6 +332,12 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		return theStaticValues.toString();
 	}
 
+	<A2> A2 getReporterCompiledAnchor(DBugEventReporter<?, ?, A2, ?, ?> reporter) {
+		synchronized (theCompiledAnchors) {
+			return (A2) theCompiledAnchors.computeIfAbsent(reporter, r -> r.compileForAnchor(this));
+		}
+	}
+
 	abstract class AbstractConfiguredRepresenation implements DBugConfiguredAnchor<A> {
 		@Override
 		public DefaultDBugAnchorType<A> getType() {
@@ -356,19 +378,19 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 	private class DBugConfigInstance extends AbstractConfiguredRepresenation {
 		final DBugConfig<A> config;
 		final ParameterMap<AnchorEvaluatedExpression<?>> variables;
-		final ParameterMap<DBugEventConfigInstance> events;
+		final ParameterMap<List<DBugEventConfigInstance>> events;
 		final AnchorEvaluatedExpression<Boolean> condition;
-		final Object[] theReporterCompiledAnchors;
+		final Object[] theReporterCompiledConfiguredAnchors;
 
 		DBugConfigInstance(DBugConfig<A> config) {
 			this.config = config;
-			variables = config.getVariables().keySet().createMap();
+			variables = config.getValues().keySet().createMap();
 			for (int i = 0; i < variables.keySet().size(); i++)
-				if (config.getVariables().get(i) != null) {
-					if (config.getVariables().get(i).template.cacheable)
-						variables.put(i, new CachedAnchorEvaluatedExpression<>(this, config.getVariables().get(i)));
+				if (config.getValues().get(i) != null) {
+					if (config.getValues().get(i).template.cacheable)
+						variables.put(i, new CachedAnchorEvaluatedExpression<>(this, config.getValues().get(i)));
 					else
-						variables.put(i, new UncachedAnchorEvaluatedExpression<>(this, config.getVariables().get(i)));
+						variables.put(i, new UncachedAnchorEvaluatedExpression<>(this, config.getValues().get(i)));
 				}
 			for (int i = 0; i < variables.keySet().size(); i++) {
 				variables.get(i).init();
@@ -379,23 +401,30 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 			}
 			events = config.getEvents().keySet().createMap();
 			for (int i = 0; i < config.getEvents().keySet().size(); i++) {
-				if (config.getEvents().get(i) != null)
-					events.put(i, new DBugEventConfigInstance(this, config.getEvents().get(i)));
+				if (config.getEvents().get(i).isEmpty())
+					events.put(i, Collections.emptyList());
+				else
+					events.put(i, config.getEvents().get(i).stream().map(event -> new DBugEventConfigInstance(this, event))
+						.collect(Collectors.toList()));
 			}
 			condition = new CachedAnchorEvaluatedExpression<>(this, config.getCondition());
 			condition.init();
 			condition.reevaluate();
 			if (!condition.error && condition.get())
 				isActive++;
-			theReporterCompiledAnchors = new Object[config.getReporters().size()];
+			theReporterCompiledConfiguredAnchors = new Object[config.getReporters().size()];
 		}
 
-		Object getReporterCompiledAnchor(int index) {
-			Object compiledAnchor = theReporterCompiledAnchors[index];
-			if (compiledAnchor == null)
-				theReporterCompiledAnchors[index] = compiledAnchor = ((DBugEventReporter<Object, ?, ?, ?>) config.getReporters().get(index))
-					.compileForConfiguredAnchor(config.getReporterCompiledAnchor(index), this);
-			return compiledAnchor;
+		Object getReporterCompiledConfiguredAnchor(int index) {
+			Object compiledConfiguredAnchor = theReporterCompiledConfiguredAnchors[index];
+			if (compiledConfiguredAnchor == null) {
+				DBugEventReporter<Object, ?, Object, ?, ?> reporter = (DBugEventReporter<Object, ?, Object, ?, ?>) config.getReporters()
+					.get(index);
+				Object compiledAnchor = getReporterCompiledAnchor(reporter);
+				theReporterCompiledConfiguredAnchors[index] = compiledConfiguredAnchor = reporter.compileForConfiguredAnchor(compiledAnchor,
+					config.getReporterCompiledAnchor(index), this);
+			}
+			return compiledConfiguredAnchor;
 		}
 
 		void remove() {
@@ -427,12 +456,12 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 
 	private abstract class AnchorEvaluatedExpression<X> {
 		final DBugConfigInstance configuredAnchor;
-		final DBugConfigVariable<A, X> expressionConfig;
+		final DBugConfigValue<A, X> expressionConfig;
 		Expression<A, ? extends X> staticallyEvaluated;
 		boolean initialized;
 		boolean error;
 
-		AnchorEvaluatedExpression(DBugConfigInstance configAnchor, DBugConfigVariable<A, X> config) {
+		AnchorEvaluatedExpression(DBugConfigInstance configAnchor, DBugConfigValue<A, X> config) {
 			configuredAnchor = configAnchor;
 			this.expressionConfig = config;
 		}
@@ -486,7 +515,7 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 	private class CachedAnchorEvaluatedExpression<X> extends AnchorEvaluatedExpression<X> {
 		X dynamicallyEvaluated;
 
-		CachedAnchorEvaluatedExpression(DBugConfigInstance configAnchor, DBugConfigVariable<A, X> config) {
+		CachedAnchorEvaluatedExpression(DBugConfigInstance configAnchor, DBugConfigValue<A, X> config) {
 			super(configAnchor, config);
 		}
 
@@ -506,7 +535,7 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 	}
 
 	private class UncachedAnchorEvaluatedExpression<X> extends AnchorEvaluatedExpression<X> {
-		UncachedAnchorEvaluatedExpression(DBugConfigInstance configAnchor, DBugConfigVariable<A, X> config) {
+		UncachedAnchorEvaluatedExpression(DBugConfigInstance configAnchor, DBugConfigValue<A, X> config) {
 			super(configAnchor, config);
 		}
 
@@ -524,42 +553,47 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		final DBugEventConfig<A> eventConfig;
 		final ParameterMap<EventEvaluableExpression<?>> eventVariables;
 		final EventEvaluableExpression<?> condition;
-		final Object [] theEventReporterCompiledAnchors;
+		final Object[] theEventReporterCompiledConfiguredAnchors;
 
 		public DBugEventConfigInstance(DBugConfigInstance config, DBugEventConfig<A> eventConfig) {
 			this.config = config;
 			this.eventConfig = eventConfig;
-			eventVariables = eventConfig.eventVariables.keySet().createMap();
+			eventVariables = eventConfig.eventValues.keySet().createMap();
 			for (int i = 0; i < eventVariables.keySet().size(); i++) {
-				if (eventConfig.eventVariables.get(i) != null)
-					eventVariables.put(i, new EventEvaluableExpression<>(this, eventConfig.eventVariables.get(i)));
+				if (eventConfig.eventValues.get(i) != null)
+					eventVariables.put(i, new EventEvaluableExpression<>(this, eventConfig.eventValues.get(i)));
 			}
 			condition = eventConfig.condition == null ? null : new EventEvaluableExpression<>(this, eventConfig.condition);
-			theEventReporterCompiledAnchors=new Object[eventConfig.template.getReporterCount()-config.getConfig().getReporters().size()];
+			theEventReporterCompiledConfiguredAnchors = new Object[eventConfig.template.getReporterCount()
+				- config.getConfig().getReporters().size()];
 		}
 
-		Object getReporterCompiledAnchor(int index) {
+		Object getReporterCompiledConfiguredAnchor(int index) {
 			int evtRIndex = index - config.getConfig().getReporters().size();
-			Object compiledAnchor;
+			Object compiledConfiguredAnchor;
 			if (evtRIndex < 0)
-				compiledAnchor = config.getReporterCompiledAnchor(index);
+				compiledConfiguredAnchor = config.getReporterCompiledConfiguredAnchor(index);
 			else {
-				compiledAnchor = theEventReporterCompiledAnchors[evtRIndex];
-				if (compiledAnchor == null)
-					theEventReporterCompiledAnchors[evtRIndex] = compiledAnchor = ((DBugEventReporter<Object, ?, ?, ?>) eventConfig.template
-						.getReporter(index)).compileForConfiguredAnchor(config.getReporterCompiledAnchor(index), config);
+				compiledConfiguredAnchor = theEventReporterCompiledConfiguredAnchors[evtRIndex];
+				if (compiledConfiguredAnchor == null){
+					DBugEventReporter<Object, ?, Object, ?, ?> reporter;
+					reporter = (DBugEventReporter<Object, ?, Object, ?, ?>) eventConfig.template.getReporter(index);
+					Object compiledAnchor=getReporterCompiledAnchor(reporter);
+					theEventReporterCompiledConfiguredAnchors[evtRIndex] = compiledConfiguredAnchor = reporter
+						.compileForConfiguredAnchor(compiledAnchor, eventConfig.getReporterCompiledAnchor(index), config);
+				}
 			}
-			return compiledAnchor;
+			return compiledConfiguredAnchor;
 		}
 	}
 
 	private class EventEvaluableExpression<X> {
 		final DBugEventConfigInstance eventConfig;
-		final DBugEventVariable<A, X> config;
+		final DBugEventValue<A, X> config;
 		final Expression<A, ? extends X> staticallyEvaluated;
 		boolean error;
 
-		EventEvaluableExpression(DBugEventConfigInstance eventConfig, DBugEventVariable<A, X> config) {
+		EventEvaluableExpression(DBugEventConfigInstance eventConfig, DBugEventValue<A, X> config) {
 			this.eventConfig = eventConfig;
 			this.config = config;
 			Expression<A, ? extends X> evald;
@@ -587,7 +621,7 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 			theEvent = event;
 			theConfig = config;
 			theEventAnchor = new EventConfiguredRepresentation(config.config);
-			ParameterMap<Object> configValues = config.eventConfig.eventVariables.keySet().createMap();
+			ParameterMap<Object> configValues = config.eventConfig.eventValues.keySet().createMap();
 			theEventConfigValues = configValues.unmodifiable();
 			// Evaluate event variables that the condition depends on
 			if (config.condition != null) {
@@ -703,15 +737,15 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 			return theEvent.getEnd();
 		}
 
-		void occurred(Map<DBugEventReporter<?, ?, ?, ?>, Object> compiledEvents) {
+		void occurred(Map<DBugEventReporter<?, ?, ?, ?, ?>, Object> compiledEvents) {
 			int rc = theConfig.eventConfig.template.getReporterCount();
 			for (int i = 0; i < rc; i++) {
-				DBugEventReporter<Object, Object, Object, Object> reporter = (DBugEventReporter<Object, Object, Object, Object>) theConfig.eventConfig.template
-					.getReporter(i);
-				Object compiledAnchor = theConfig.getReporterCompiledAnchor(i);
+				DBugEventReporter<Object, Object, Object, Object, Object> reporter;
+				reporter = (DBugEventReporter<Object, Object, Object, Object, Object>) theConfig.eventConfig.template.getReporter(i);
+				Object compiledAnchor = theConfig.getReporterCompiledConfiguredAnchor(i);
 				Object compiledEventType = theConfig.eventConfig.getReporterCompiledEvent(i);
 				Object compiledEvent = compiledEvents.computeIfAbsent(reporter,
-					r -> reporter.compileForEvent(compiledAnchor, compiledEventType, theEvent.getEventId()));
+					r -> reporter.compileForEvent(compiledAnchor, compiledEventType, theEvent));
 				try {
 					reporter.eventOccurred(this, compiledAnchor, compiledEvent);
 				} catch (RuntimeException e) {
@@ -721,16 +755,16 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 			}
 		}
 
-		void begun(Map<DBugEventReporter<?, ?, ?, ?>, Object> compiledEvents) {
+		void begun(Map<DBugEventReporter<?, ?, ?, ?, ?>, Object> compiledEvents) {
 			int rc = theConfig.eventConfig.template.getReporterCount();
 			theReporterTransactions = new ArrayList<>(rc);
 			for (int i = 0; i < rc; i++) {
-				DBugEventReporter<Object, Object, Object, Object> reporter = (DBugEventReporter<Object, Object, Object, Object>) theConfig.eventConfig.template
-					.getReporter(i);
-				Object compiledAnchor = theConfig.getReporterCompiledAnchor(i);
+				DBugEventReporter<Object, Object, Object, Object, Object> reporter;
+				reporter = (DBugEventReporter<Object, Object, Object, Object, Object>) theConfig.eventConfig.template.getReporter(i);
+				Object compiledAnchor = theConfig.getReporterCompiledConfiguredAnchor(i);
 				Object compiledEventType = theConfig.eventConfig.getReporterCompiledEvent(i);
 				Object compiledEvent = compiledEvents.computeIfAbsent(reporter,
-					r -> reporter.compileForEvent(compiledAnchor, compiledEventType, theEvent.getEventId()));
+					r -> reporter.compileForEvent(compiledAnchor, compiledEventType, theEvent));
 				try {
 					theReporterTransactions.add(//
 						reporter.eventBegun(this, compiledAnchor, compiledEvent));

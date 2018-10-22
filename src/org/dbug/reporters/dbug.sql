@@ -50,7 +50,7 @@ CREATE TABLE dbug.Anchor_Field(
 	id BIGINT NOT NULL,
 	anchor_type BIGINT NOT NULL,
 	name VARCHAR(255) NOT NULL,
-	variable_type INT NOT NULL, --0 for static, 1 for dynamic
+	field_type INT NOT NULL, --0 for static, 1 for dynamic
 
 	PRIMARY KEY(process, id),
 	FOREIGN KEY(process) REFERENCES dbug.Process(id),
@@ -87,8 +87,8 @@ CREATE TABLE dbug.Event_Field(
 CREATE TABLE dbug.Config(
 	process BIGINT NOT NULL,
 	id BIGINT NOT NULL,
-	config_id VARCHAR(255) NOT NULL,
 	anchor_type BIGINT NOT NULL,
+	config_id VARCHAR(255) NOT NULL,
 	condition BIGINT NULL, --Nullable because the Config_Variable.config field is not nullable.  This must be populated shortly after insertion.
 
 	PRIMARY KEY(process, id),
@@ -96,7 +96,7 @@ CREATE TABLE dbug.Config(
 	FOREIGN KEY(process, anchor_type) REFERENCES dbug.Anchor_Type(process, id)
 );
 
-CREATE TABLE dbug.Config_Variable(
+CREATE TABLE dbug.Config_Value(
 	process BIGINT NOT NULL,
 	id BIGINT NOT NULL,
 	config BIGINT NOT NULL,
@@ -117,11 +117,10 @@ CREATE TABLE dbug.Config_Event(
 	PRIMARY KEY(process, id),
 	FOREIGN KEY(process) REFERENCES dbug.Process(id),
 	FOREIGN KEY(process, config) REFERENCES dbug.Config(process, id),
-	FOREIGN KEY(process, event_type) REFERENCES dbug.Event_Type(process, id),
-	UNIQUE (process, config, event_type)
+	FOREIGN KEY(process, event_type) REFERENCES dbug.Event_Type(process, id)
 );
 
-CREATE TABLE dbug.Config_Event_Variable(
+CREATE TABLE dbug.Config_Event_Value(
 	process BIGINT NOT NULL,
 	id BIGINT NOT NULL,
 	config_event BIGINT NOT NULL,
@@ -145,20 +144,6 @@ CREATE TABLE dbug.Anchor(
 	FOREIGN KEY(process, anchor_type) REFERENCES dbug.Anchor_Type(process, id)
 );
 
-CREATE TABLE dbug.Event_Instance(
-	process BIGINT NOT NULL,
-	id BIGINT NOT NULL,
-	event_type BIGINT NOT NULL,
-	anchor BIGINT NOT NULL,
-	start_time TIMESTAMP NOT NULL,
-	end_time TIMESTAMP NULL, --Null if the event has not finished
-
-	PRIMARY KEY(process, id),
-	FOREIGN KEY(process) REFERENCES dbug.Process(id),
-	FOREIGN KEY(process, event_type) REFERENCES dbug.Event_Type(process, id),
-	FOREIGN KEY(process, anchor) REFERENCES dbug.Anchor(process, id)
-);
-
 CREATE TABLE dbug.Anchor_Config_Instance(
 	process BIGINT NOT NULL,
 	id BIGINT NOT NULL,
@@ -174,45 +159,59 @@ CREATE TABLE dbug.Anchor_Config_Instance(
 
 --Event instance information
 
+CREATE TABLE dbug.Event_Instance(
+	process BIGINT NOT NULL,
+	id BIGINT NOT NULL,
+	event_type BIGINT NOT NULL,
+	anchor BIGINT NOT NULL,
+	start_time TIMESTAMP NOT NULL,
+	end_time TIMESTAMP NULL, --Null if the event has not finished
+
+	PRIMARY KEY(process, id),
+	FOREIGN KEY(process) REFERENCES dbug.Process(id),
+	FOREIGN KEY(process, event_type) REFERENCES dbug.Event_Type(process, id),
+	FOREIGN KEY(process, anchor) REFERENCES dbug.Anchor(process, id)
+);
+
 CREATE TABLE dbug.Event_Config_Instance(
 	process BIGINT NOT NULL,
 	id BIGINT NOT NULL,
-	config BIGINT NOT NULL,
+	anchor BIGINT NOT NULL,
 	event BIGINT NOT NULL,
 
 	PRIMARY KEY(process, id),
 	FOREIGN KEY(process) REFERENCES dbug.Process(id),
-	FOREIGN KEY(process, config) REFERENCES dbug.Config(process, id),
+	FOREIGN KEY(process, anchor) REFERENCES dbug.Anchor_Config_Instance(process, id),
 	FOREIGN KEY(process, event) REFERENCES dbug.Event_Instance(process, id),
-	UNIQUE (process, config, anchor)
+	UNIQUE (process, anchor, event)
 );
 
-CREATE TABLE dbug.Event_Value( --Either an event field or a event config variable value
+CREATE TABLE dbug.Event_Value( --Either an event field or a event config-value value
 	process BIGINT NOT NULL,
 	field BIGINT NULL, --Null if this represents a config variable value
-	variable BIGINT NULL, --Null if this represents an event field value
+	event_value BIGINT NULL, --Null if this represents an event field value
 	event BIGINT NOT NULL, --Actually references Event_Config_Instance
 	value_str VARCHAR(512), --The toString() representation of the event field/variable value
 
 	PRIMARY KEY(process, id),
 	FOREIGN KEY(process) REFERENCES dbug.Process(id),
 	FOREIGN KEY(process, field) REFERENCES dbug.Event_Field(process, id),
-	FOREIGN KEY(process, variable) REFERENCES dbug.Config_Event_Variable(process, id),
+	FOREIGN KEY(process, event_value) REFERENCES dbug.Config_Event_Value(process, id),
 	FOREIGN KEY(process, event) REFERENCES dbug.Event_Config_Instance(process, id)
 );
 
 --Anchor state information
 
-CREATE TABLE dbug.Anchor_Value( --Either an anchor field or a config variable value
+CREATE TABLE dbug.Anchor_Value( --Either an anchor field or a config-value value
 	process BIGINT NOT NULL,
 	field BIGINT NULL, --Null if this represents a config variable value
-	variable BIGINT NULL, --Null if this represents an anchor field value
+	config_value BIGINT NULL, --Null if this represents an anchor field value
 	event BIGINT NOT NULL, --Actually references Event_Config_Instance. The event where the value was reported with an initial or new value.
 	value_str VARCHAR(512), --The toString() representation of the field/variable value
 
 	PRIMARY KEY(process, id),
 	FOREIGN KEY(process) REFERENCES dbug.Process(id),
 	FOREIGN KEY(process, field) REFERENCES dbug.Anchor_Field(process, id),
-	FOREIGN KEY(process, variable) REFERENCES dbug.Config_Variable(process, id),
+	FOREIGN KEY(process, config_value) REFERENCES dbug.Config_Value(process, id),
 	FOREIGN KEY(process, event) REFERENCES dbug.Event_Config_Instance(process, id)
 );

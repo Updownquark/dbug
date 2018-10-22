@@ -16,7 +16,7 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 
 import org.dbug.config.DBugConfig.DBugEventConfig;
-import org.dbug.config.DBugConfig.DBugEventVariable;
+import org.dbug.config.DBugConfig.DBugEventValue;
 import org.dbug.config.DBugConfigEvent;
 import org.dbug.config.SimpleDBugEventReporter;
 import org.dbug.expression.ConstantExpression;
@@ -154,7 +154,7 @@ public class ProfilingReporter implements SimpleDBugEventReporter {
 	}
 
 	static EventProfileConfig buildEventDescrip(DBugEventConfig<?> eventConfig) {
-		DBugEventVariable<?, ?> profileConfigVar = eventConfig.eventVariables.get("profile-grouping");
+		DBugEventValue<?, ?> profileConfigVar = eventConfig.eventValues.get("profile-grouping");
 		if (profileConfigVar == null)
 			return EventProfileConfig.EMPTY;
 		else if (!(profileConfigVar.expression instanceof ConstantExpression)) {
@@ -215,7 +215,7 @@ public class ProfilingReporter implements SimpleDBugEventReporter {
 			return event -> event.getAnchor().getValue();
 		else if (valName.equals("event"))
 			return event -> event.getType().getEventName();
-		int index = eventConfig.eventVariables.keySet().indexOf(valName);
+		int index = eventConfig.eventValues.keySet().indexOf(valName);
 		if (index >= 0) {
 			int fIndex = index;
 			return event -> event.getEventConfigValues().get(fIndex);
@@ -225,7 +225,7 @@ public class ProfilingReporter implements SimpleDBugEventReporter {
 			int fIndex = index;
 			return event -> event.getEventValues().get(fIndex);
 		}
-		index = eventConfig.getConfig().getVariables().keySet().indexOf(valName);
+		index = eventConfig.getConfig().getValues().keySet().indexOf(valName);
 		if (index >= 0) {
 			int fIndex = index;
 			return event -> event.getAnchor().getConfigValues().get(fIndex);

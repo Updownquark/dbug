@@ -13,11 +13,11 @@ import org.dbug.DBugAnchorBuilder;
 import org.dbug.DBugAnchorType;
 import org.dbug.DBugEventBuilder;
 import org.dbug.DBugEventType;
+import org.dbug.DBugFieldType;
 import org.dbug.DBugParameterType;
-import org.dbug.DBugVariableType;
 import org.dbug.config.DBugConfig;
-import org.dbug.config.DBugConfig.DBugConfigVariable;
-import org.dbug.config.DBugConfig.DBugEventVariable;
+import org.dbug.config.DBugConfig.DBugConfigValue;
+import org.dbug.config.DBugConfig.DBugEventValue;
 import org.dbug.config.DBugConfigTemplate;
 import org.dbug.config.DBugConfigTemplate.DBugEventConfigTemplate;
 import org.dbug.expression.DBugParseEnv;
@@ -33,6 +33,7 @@ import com.google.common.reflect.TypeToken;
 
 public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 	private final DefaultDBug theDebug;
+	private final String theSchema;
 	private final Class<A> theType;
 	final Class<?> theBuilderClass;
 	private final ParameterMap<DBugParameterType<A, ?>> theStaticValues;
@@ -44,15 +45,16 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 	private final List<DBugConfig<A>> theConfigs;
 	private InactiveAnchor<A> theInactive;
 
-	public DefaultDBugAnchorType(DefaultDBug debug, Class<A> type, Class<?> builderClass, Map<String, DBugParameterType<A, ?>> valueTypes,
-		Map<String, Map<String, TypeToken<?>>> eventTypes) {
+	public DefaultDBugAnchorType(DefaultDBug debug, String schema, Class<A> type, Class<?> builderClass,
+		Map<String, DBugParameterType<A, ?>> valueTypes, Map<String, Map<String, TypeToken<?>>> eventTypes) {
 		theDebug = debug;
+		theSchema = schema;
 		theType = type;
 		theBuilderClass = builderClass;
 		List<String> staticValueNames = new LinkedList<>();
 		List<String> dynamicValueNames = new LinkedList<>();
 		for (Map.Entry<String, DBugParameterType<A, ?>> valueType : valueTypes.entrySet()) {
-			if (valueType.getValue().level == DBugVariableType.STATIC)
+			if (valueType.getValue().level == DBugFieldType.STATIC)
 				staticValueNames.add(valueType.getKey());
 			else
 				dynamicValueNames.add(valueType.getKey());
@@ -60,7 +62,7 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 		ParameterMap<DBugParameterType<A, ?>> staticValues = ParameterSet.of(staticValueNames).createMap();
 		ParameterMap<DBugParameterType<A, ?>> dynamicValues = ParameterSet.of(dynamicValueNames).createMap();
 		for (Map.Entry<String, DBugParameterType<A, ?>> valueType : valueTypes.entrySet()) {
-			if (valueType.getValue().level == DBugVariableType.STATIC)
+			if (valueType.getValue().level == DBugFieldType.STATIC)
 				staticValues.put(valueType.getKey(), valueType.getValue());
 			else
 				dynamicValues.put(valueType.getKey(), valueType.getValue());
@@ -79,6 +81,11 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 		theUpdateEventIndex = theEventTypes.keyIndex(DBugEventType.StandardEvents.VALUE_UPDATE.name());
 
 		theConfigs = new ArrayList<>();
+	}
+
+	@Override
+	public String getSchema() {
+		return theSchema;
 	}
 
 	@Override
@@ -112,7 +119,7 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 
 	@Override
 	public int hashCode() {
-		return theType.hashCode() * 3 + theBuilderClass.hashCode();
+		return theSchema.hashCode() * 3 + theType.hashCode() * 3;
 	}
 
 	@Override
@@ -127,7 +134,7 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 
 	@Override
 	public String toString() {
-		return theType.getName();
+		return theSchema + ":" + theType.getName();
 	}
 
 	public DBugConfig<A> addConfig(DBugConfigTemplate config, Consumer<String> onError) {
@@ -182,9 +189,9 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 	private DBugConfig<A> parseConfig(DBugConfigTemplate config, Consumer<String> onError) {
 		DBugConfig<A>[] configHolder = new DBugConfig[1];
 		// Parse the anchor variables first
-		ParameterMap<DBugConfig.DBugConfigVariable<A, ?>> variables = parseVariables(config, onError);
+		ParameterMap<DBugConfig.DBugConfigValue<A, ?>> variables = parseVariables(config, onError);
 		// Parse the events
-		ParameterMap<DBugConfig.DBugEventConfig<A>> events = parseEvents(config, variables, onError, configHolder);
+		ParameterMap<List<DBugConfig.DBugEventConfig<A>>> events = parseEvents(config, variables, onError, configHolder);
 		// Parse the condition last
 		boolean[] valid = new boolean[] { true };
 		DBugParseEnv<A> env = new DBugParseEnv<>(this, null, config, null, variables, null, err -> {
@@ -206,15 +213,15 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 		}
 		if (valid[0])
 			return configHolder[0] = new DBugConfig<>(config, this, variables,
-				new DBugConfigVariable<>(null, (Expression<A, Boolean>) condition,
+				new DBugConfigValue<>(null, (Expression<A, Boolean>) condition,
 				env.getDynamicDependencies(), env.getConfigVariableDependencies()), events);
 		else
 			return null;
 	}
 
-	private ParameterMap<DBugConfig.DBugConfigVariable<A, ?>> parseVariables(DBugConfigTemplate config, Consumer<String> onError) {
-		ParameterMap<DBugConfigTemplate.DBugConfigTemplateVariable> varTemplates = config.getVariables();
-		ParameterMap<DBugConfig.DBugConfigVariable<A, ?>> variables = varTemplates.keySet().createMap();
+	private ParameterMap<DBugConfig.DBugConfigValue<A, ?>> parseVariables(DBugConfigTemplate config, Consumer<String> onError) {
+		ParameterMap<DBugConfigTemplate.DBugConfigTemplateValue> varTemplates = config.getValues();
+		ParameterMap<DBugConfig.DBugConfigValue<A, ?>> variables = varTemplates.keySet().createMap();
 		String[] varName = new String[1];
 		DBugParseEnv<A> env = new DBugParseEnv<>(this, null, config, null, variables, null, err -> {
 			onError.accept("Error in variable " + theType.getName() + "." + varName[0] + ": " + err);
@@ -247,10 +254,10 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 		return variables;
 	}
 
-	private ParameterMap<DBugConfig.DBugEventConfig<A>> parseEvents(DBugConfigTemplate config,
-		ParameterMap<DBugConfig.DBugConfigVariable<A, ?>> variables, Consumer<String> onError, DBugConfig<A>[] configHolder) {
+	private ParameterMap<List<DBugConfig.DBugEventConfig<A>>> parseEvents(DBugConfigTemplate config,
+		ParameterMap<DBugConfig.DBugConfigValue<A, ?>> variables, Consumer<String> onError, DBugConfig<A>[] configHolder) {
 		ParameterMap<DBugConfigTemplate.DBugEventConfigTemplate> eventTemplates = config.getEvents();
-		ParameterMap<DBugConfig.DBugEventConfig<A>> events = theEventTypes.keySet().createMap();
+		ParameterMap<List<DBugConfig.DBugEventConfig<A>>> events = theEventTypes.keySet().createMap();
 		for (int i = 0; i < eventTemplates.keySet().size(); i++) {
 			DBugEventConfigTemplate event = eventTemplates.get(i);
 			int ei = theEventTypes.keySet().indexOf(event.eventName);
@@ -260,7 +267,7 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 			}
 			DefaultDBugEventType<A> eventType = theEventTypes.get(ei);
 			// Event variables
-			ParameterMap<DBugEventVariable<A, ?>> eventVars = event.eventVariables.keySet().createMap();
+			ParameterMap<DBugEventValue<A, ?>> eventVars = event.eventVariables.keySet().createMap();
 			String[] varName = new String[1];
 			DBugParseEnv<A> env = new DBugParseEnv<>(this, eventType, config, event, variables, eventVars, err -> {
 				String v = varName[0] == null//
@@ -310,11 +317,20 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 				}
 			} else
 				condition = null;
-			if (valid[0])
-				events.put(ei, new DBugConfig.DBugEventConfig<>(event, eventType, eventVars, condition == null ? null
-					: new DBugEventVariable<>(eventType, null, -1, (Expression<A, Boolean>) condition,
+			if (valid[0]) {
+				if (events.get(ei) == null)
+					events.put(ei, new ArrayList<>(2));
+				events.get(ei).add(new DBugConfig.DBugEventConfig<>(event, eventType, eventVars, condition == null ? null
+					: new DBugEventValue<>(eventType, null, -1, (Expression<A, Boolean>) condition,
 						env.getEventVariableDependencies()),
 					configHolder));
+			}
+		}
+		for (int i = 0; i < events.keySet().size(); i++) {
+			if (events.get(i) != null) {
+				((ArrayList<?>) events.get(i)).trimToSize();
+				events.put(i, Collections.unmodifiableList(events.get(i)));
+			}
 		}
 		return events;
 	}

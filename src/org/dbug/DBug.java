@@ -23,8 +23,8 @@ public class DBug {
 		IMPLEMENTATION = implementation;
 	}
 
-	public static <T> DBugAnchorType<T> declare(Class<T> type, Function<DBugAnchorTypeBuilder<T>, ?> builder) {
-		return IMPLEMENTATION.declare(type, b -> builder.apply(b));
+	public static <T> DBugAnchorType<T> declare(String schema, Class<T> type, Function<DBugAnchorTypeBuilder<T>, ?> builder) {
+		return IMPLEMENTATION.declare(schema, type, b -> builder.apply(b));
 	}
 
 	public static void queueAction(Runnable action) {

@@ -48,7 +48,7 @@ public class DefaultDBug implements DBugImplementation {
 	};
 
 	private final DefaultDBugProcess theProcess;
-	private final ConcurrentHashMap<String, List<? extends DefaultDBugAnchorType<?>>> theAnchorTypes;
+	private final ConcurrentHashMap<BiTuple<String, String>, List<? extends DefaultDBugAnchorType<?>>> theAnchorTypes;
 	private final ConcurrentHashMap<StorageKey, DBugAnchorHolder> theAnchors;
 
 	private final SortedTreeList<DBugConfigTemplate> theConfigs;
@@ -134,7 +134,7 @@ public class DefaultDBug implements DBugImplementation {
 		long eventId = getNextEventId();
 		theConfigs.add(config);
 		Map<DBugAnchorType<T>, DBugConfig<T>> configs = new IdentityHashMap<>();
-		theAnchorTypes.computeIfPresent(config.getClassName(), (k, anchorTypes) -> {
+		theAnchorTypes.computeIfPresent(new BiTuple<>(config.getSchema(), config.getClassName()), (k, anchorTypes) -> {
 			for (DefaultDBugAnchorType<T> at : (List<DefaultDBugAnchorType<T>>) anchorTypes) {
 				DBugConfig<T> cfg = at.addConfig(config, onError);
 				if (cfg != null)
@@ -164,7 +164,7 @@ public class DefaultDBug implements DBugImplementation {
 		if (!theConfigs.remove(config))
 			return;
 		Map<DBugAnchorType<T>, DBugConfig<T>> configs = new IdentityHashMap<>();
-		theAnchorTypes.computeIfPresent(config.getClassName(), (k, anchorTypes) -> {
+		theAnchorTypes.computeIfPresent(new BiTuple<>(config.getSchema(), config.getClassName()), (k, anchorTypes) -> {
 			for (DefaultDBugAnchorType<T> at : (List<DefaultDBugAnchorType<T>>) anchorTypes) {
 				DBugConfig<T> cfg = at.removeConfig(config);
 				if (cfg != null)
@@ -187,7 +187,7 @@ public class DefaultDBug implements DBugImplementation {
 	}
 
 	public void updateConfig(DBugConfigTemplate oldConfig, DBugConfigTemplate newConfig, Consumer<String> onError) {
-		if (oldConfig.getClassName().equals(newConfig.getClassName())) {
+		if (oldConfig.getSchema().equals(newConfig.getSchema()) && oldConfig.getClassName().equals(newConfig.getClassName())) {
 			_updateConfig(oldConfig, newConfig, onError);
 		} else {
 			removeConfig(oldConfig);
@@ -201,7 +201,7 @@ public class DefaultDBug implements DBugImplementation {
 			return;
 		theConfigs.mutableElement(el.getElementId()).set(newConfig);
 		Map<DBugAnchorType<T>, BiTuple<DBugConfig<T>, DBugConfig<T>>> configs = new IdentityHashMap<>();
-		theAnchorTypes.computeIfPresent(oldConfig.getClassName(), (k, anchorTypes) -> {
+		theAnchorTypes.computeIfPresent(new BiTuple<>(oldConfig.getSchema(), oldConfig.getClassName()), (k, anchorTypes) -> {
 			for (DefaultDBugAnchorType<T> at : (List<DefaultDBugAnchorType<T>>) anchorTypes) {
 				BiTuple<DBugConfig<T>, DBugConfig<T>> cfg = at.updateConfig(oldConfig, newConfig, onError);
 				if (cfg != null)
@@ -237,9 +237,9 @@ public class DefaultDBug implements DBugImplementation {
 	}
 
 	@Override
-	public <T> DBugAnchorType<T> declare(Class<T> type, Consumer<DBugAnchorTypeBuilder<T>> builder) {
+	public <T> DBugAnchorType<T> declare(String schema, Class<T> type, Consumer<DBugAnchorTypeBuilder<T>> builder) {
 		DefaultDBugAnchorType<T>[] ret = new DefaultDBugAnchorType[1];
-		theAnchorTypes.compute(type.getName(), (k, ats) -> {
+		theAnchorTypes.compute(new BiTuple<>(schema, type.getName()), (k, ats) -> {
 			List<DefaultDBugAnchorType<T>> anchorTypes = (List<DefaultDBugAnchorType<T>>) ats;
 			if (anchorTypes == null) {
 				ats = anchorTypes = new LinkedList<>();
@@ -252,7 +252,7 @@ public class DefaultDBug implements DBugImplementation {
 				}
 			}
 			if (ret[0] == null) {
-				ret[0] = buildAnchorType(type, builder);
+				ret[0] = buildAnchorType(schema, type, builder);
 				anchorTypes.add(ret[0]);
 			}
 			return anchorTypes;
@@ -260,10 +260,10 @@ public class DefaultDBug implements DBugImplementation {
 		return ret[0];
 	}
 
-	private <T> DefaultDBugAnchorType<T> buildAnchorType(Class<T> clazz, Consumer<DBugAnchorTypeBuilder<T>> builder) {
+	private <T> DefaultDBugAnchorType<T> buildAnchorType(String schema, Class<T> clazz, Consumer<DBugAnchorTypeBuilder<T>> builder) {
 		DefaultAnchorTypeBuilder<T> b = new DefaultAnchorTypeBuilder<>(clazz);
 		builder.accept(b);
-		DefaultDBugAnchorType<T> at = new DefaultDBugAnchorType<>(this, clazz, builder.getClass(), b.theValues, b.theEvents);
+		DefaultDBugAnchorType<T> at = new DefaultDBugAnchorType<>(this, schema, clazz, builder.getClass(), b.theValues, b.theEvents);
 		try (Transaction t = theConfigs.lock(false, null)) {
 			CollectionElement<DBugConfigTemplate> config = theConfigs.search(cfg -> clazz.getName().compareTo(cfg.getClassName()),
 				SortedSearchFilter.PreferLess);

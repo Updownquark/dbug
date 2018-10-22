@@ -1,5 +1,5 @@
 package org.dbug;
 
-public enum DBugVariableType {
+public enum DBugFieldType {
 	STATIC, DYNAMIC, EVENT;
 }

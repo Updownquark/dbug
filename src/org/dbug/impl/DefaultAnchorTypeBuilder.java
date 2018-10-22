@@ -11,7 +11,7 @@ import org.dbug.DBugAnchorTypeBuilder;
 import org.dbug.DBugEventType;
 import org.dbug.DBugEventTypeBuilder;
 import org.dbug.DBugParameterType;
-import org.dbug.DBugVariableType;
+import org.dbug.DBugFieldType;
 import org.observe.util.TypeTokens;
 
 import com.google.common.reflect.TypeToken;
@@ -37,26 +37,26 @@ public class DefaultAnchorTypeBuilder<T> implements DBugAnchorTypeBuilder<T> {
 
 	@Override
 	public <P> DBugAnchorTypeBuilder<T> withStaticField(String name, TypeToken<P> type, Function<? super T, ? extends P> value) {
-		return withField(name, type, value, DBugVariableType.STATIC);
+		return withField(name, type, value, DBugFieldType.STATIC);
 	}
 
 	@Override
 	public <P> DBugAnchorTypeBuilder<T> withExternalStaticField(String name, TypeToken<P> type) {
-		return withField(name, type, null, DBugVariableType.STATIC);
+		return withField(name, type, null, DBugFieldType.STATIC);
 	}
 
 	@Override
 	public <P> DBugAnchorTypeBuilder<T> withDynamicField(String name, TypeToken<P> type, Function<? super T, ? extends P> value) {
-		return withField(name, type, value, DBugVariableType.DYNAMIC);
+		return withField(name, type, value, DBugFieldType.DYNAMIC);
 	}
 
 	@Override
 	public <P> DBugAnchorTypeBuilder<T> withExternalDynamicField(String name, TypeToken<P> type) {
-		return withField(name, type, null, DBugVariableType.DYNAMIC);
+		return withField(name, type, null, DBugFieldType.DYNAMIC);
 	}
 
 	private <P> DBugAnchorTypeBuilder<T> withField(String name, TypeToken<P> type, Function<? super T, ? extends P> value,
-		DBugVariableType level) {
+		DBugFieldType level) {
 		if (name.equals("value"))
 			throw new IllegalArgumentException("Field name \"value\" is reserved");
 		for (Map.Entry<String, Map<String, TypeToken<?>>> event : theEvents.entrySet()) {
