@@ -164,6 +164,7 @@ CREATE TABLE dbug.Event_Instance(
 	id BIGINT NOT NULL,
 	event_type BIGINT NOT NULL,
 	anchor BIGINT NOT NULL,
+	thread_id BIGINT NOT NULL,
 	start_time TIMESTAMP NOT NULL,
 	end_time TIMESTAMP NULL, --Null if the event has not finished
 

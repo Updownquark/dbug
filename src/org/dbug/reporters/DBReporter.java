@@ -47,6 +47,7 @@ public class DBReporter implements DBugEventReporter<DBReporter.DBCompiledAnchor
 	long theProcessId;
 	final Map<String, Long> theSchemaIds;
 	final Map<BiTuple<String, String>, DBCompiledAnchorType> theAnchorTypes;
+	final ThreadLocal<Long> theThreadIds;
 
 	final AtomicLong theSchemaIdGen;
 	PreparedStatement theSchemaInsert;
@@ -82,6 +83,7 @@ public class DBReporter implements DBugEventReporter<DBReporter.DBCompiledAnchor
 	public DBReporter() {
 		theSchemaIds = new ConcurrentHashMap<>();
 		theAnchorTypes = new ConcurrentHashMap<>();
+		theThreadIds = ThreadLocal.withInitial(() -> Thread.currentThread().getId());
 
 		theSchemaIdGen = new AtomicLong();
 		theAnchorTypeIdGen = new AtomicLong();
@@ -756,12 +758,14 @@ public class DBReporter implements DBugEventReporter<DBReporter.DBCompiledAnchor
 					theCompiledAnchor.theCompiledAnchor.theReporter.theEventInsert.setLong(1, theEvent.getEventId());
 					theCompiledAnchor.theCompiledAnchor.theReporter.theEventInsert.setLong(2, theEventConfig.theEventType.id);
 					theCompiledAnchor.theCompiledAnchor.theReporter.theEventInsert.setLong(3, theCompiledAnchor.theCompiledAnchor.id);
-					theCompiledAnchor.theCompiledAnchor.theReporter.theEventInsert.setDate(4, new Date(theEvent.getStart().toEpochMilli()));
+					theCompiledAnchor.theCompiledAnchor.theReporter.theEventInsert.setLong(4,
+						theCompiledAnchor.theCompiledAnchor.theReporter.theThreadIds.get());
+					theCompiledAnchor.theCompiledAnchor.theReporter.theEventInsert.setDate(5, new Date(theEvent.getStart().toEpochMilli()));
 					if (theEvent.getEnd() != null)
-						theCompiledAnchor.theCompiledAnchor.theReporter.theEventInsert.setDate(5,
+						theCompiledAnchor.theCompiledAnchor.theReporter.theEventInsert.setDate(6,
 							new Date(theEvent.getEnd().toEpochMilli()));
 					else
-						theCompiledAnchor.theCompiledAnchor.theReporter.theEventInsert.setNull(5, Types.TIMESTAMP);
+						theCompiledAnchor.theCompiledAnchor.theReporter.theEventInsert.setNull(6, Types.TIMESTAMP);
 					theCompiledAnchor.theCompiledAnchor.theReporter.theEventInsert.execute();
 				}
 				synchronized (theCompiledAnchor.theCompiledAnchor.theReporter.theEventValueInsert) {
