@@ -656,10 +656,7 @@ public class DBReporter implements DBugEventReporter<DBReporter.DBCompiledAnchor
 				(staticField ? theAnchorType.theStaticFieldIds : theAnchorType.theDynamicFieldIds).get(index));
 			theReporter.theAnchorValueInsert.setNull(2, Types.BIGINT);
 			theReporter.theAnchorValueInsert.setLong(3, eventId);
-			String valueStr = String.valueOf(fieldValue);
-			if (valueStr.length() > 512)
-				valueStr = valueStr.substring(0, 509) + "...";
-			theReporter.theAnchorValueInsert.setString(4, valueStr);
+			theReporter.theAnchorValueInsert.setString(4, valueString(fieldValue));
 			theReporter.theAnchorValueInsert.execute();
 		}
 	}
@@ -670,7 +667,7 @@ public class DBReporter implements DBugEventReporter<DBReporter.DBCompiledAnchor
 		final DBugConfiguredAnchor<?> theAnchor;
 		final long id;
 		final ParameterMap<Object> theConfigAnchorValues;
-		boolean theConfigConditionValue;
+		boolean isActive;
 		final AtomicBoolean isInitialized;
 
 		DBCompiledConfiguredAnchor(DBCompiledAnchor compiledAnchor, DBCompiledAnchorConfig compiledAnchorConfig,
@@ -707,6 +704,12 @@ public class DBReporter implements DBugEventReporter<DBReporter.DBCompiledAnchor
 							theConfigAnchorValues.put(i, fieldValue);
 							writeConfigValue(i, event.getEventId(), fieldValue);
 						}
+						isActive = theAnchor.isActive();
+						theCompiledAnchor.theReporter.theAnchorValueInsert.setNull(1, Types.BIGINT);
+						theCompiledAnchor.theReporter.theAnchorValueInsert.setLong(2, theAnchorConfig.theConfigConditionId);
+						theCompiledAnchor.theReporter.theAnchorValueInsert.setLong(3, event.getEventId());
+						theCompiledAnchor.theReporter.theAnchorValueInsert.setString(4, valueString(isActive));
+						theCompiledAnchor.theReporter.theAnchorValueInsert.execute();
 					} else {
 						for (int i = 0; i < theConfigAnchorValues.keySet().size(); i++) {
 							Object fieldValue = event.getDynamicValues().get(i);
@@ -714,6 +717,14 @@ public class DBReporter implements DBugEventReporter<DBReporter.DBCompiledAnchor
 								theConfigAnchorValues.put(i, fieldValue);
 								writeConfigValue(i, event.getEventId(), fieldValue);
 							}
+						}
+						if (isActive != theAnchor.isActive()) {
+							isActive = !isActive;
+							theCompiledAnchor.theReporter.theAnchorValueInsert.setLong(1, theAnchorConfig.theConfigConditionId);
+							theCompiledAnchor.theReporter.theAnchorValueInsert.setNull(2, Types.BIGINT);
+							theCompiledAnchor.theReporter.theAnchorValueInsert.setLong(3, event.getEventId());
+							theCompiledAnchor.theReporter.theAnchorValueInsert.setString(4, valueString(isActive));
+							theCompiledAnchor.theReporter.theAnchorValueInsert.execute();
 						}
 					}
 				} catch (SQLException e) {

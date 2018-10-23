@@ -89,7 +89,7 @@ CREATE TABLE dbug.Config(
 	id BIGINT NOT NULL,
 	anchor_type BIGINT NOT NULL,
 	config_id VARCHAR(255) NOT NULL,
-	condition BIGINT NULL, --Nullable because the Config_Variable.config field is not nullable.  This must be populated shortly after insertion.
+	condition BIGINT NULL, --Nullable because the Config_Value.config field is not nullable.  This must be populated shortly after insertion.
 
 	PRIMARY KEY(process, id),
 	FOREIGN KEY(process) REFERENCES dbug.Process(id),
