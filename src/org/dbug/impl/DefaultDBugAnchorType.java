@@ -330,7 +330,8 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 			if (events.get(i) != null) {
 				((ArrayList<?>) events.get(i)).trimToSize();
 				events.put(i, Collections.unmodifiableList(events.get(i)));
-			}
+			} else
+				events.put(i, Collections.emptyList());
 		}
 		return events;
 	}
