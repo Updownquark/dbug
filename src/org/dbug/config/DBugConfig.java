@@ -9,18 +9,18 @@ import org.dbug.config.DBugConfigTemplate.DBugConfigTemplateValue;
 import org.dbug.config.DBugConfigTemplate.DBugEventConfigTemplate;
 import org.dbug.expression.Expression;
 import org.dbug.impl.DefaultDBugEventType;
-import org.qommons.collect.ParameterSet.ParameterMap;
+import org.qommons.collect.QuickSet.QuickMap;
 
 public class DBugConfig<A> {
 	private final DBugConfigTemplate theTemplate;
 	private final DBugAnchorType<A> theAnchorType;
-	private final ParameterMap<DBugConfigValue<A, ?>> theValues;
+	private final QuickMap<String, DBugConfigValue<A, ?>> theValues;
 	private final DBugConfigValue<A, Boolean> theCondition;
-	private final ParameterMap<List<DBugEventConfig<A>>> theEvents;
+	private final QuickMap<String, List<DBugEventConfig<A>>> theEvents;
 	private final Object[] theReporterCompiledAnchors;
 
-	public DBugConfig(DBugConfigTemplate template, DBugAnchorType<A> anchorType, ParameterMap<DBugConfigValue<A, ?>> values,
-		DBugConfigValue<A, Boolean> condition, ParameterMap<List<DBugEventConfig<A>>> events) {
+	public DBugConfig(DBugConfigTemplate template, DBugAnchorType<A> anchorType, QuickMap<String, DBugConfigValue<A, ?>> values,
+		DBugConfigValue<A, Boolean> condition, QuickMap<String, List<DBugEventConfig<A>>> events) {
 		theTemplate = template;
 		theAnchorType = anchorType;
 		theValues = values;
@@ -37,7 +37,7 @@ public class DBugConfig<A> {
 		return theAnchorType;
 	}
 
-	public ParameterMap<DBugConfigValue<A, ?>> getValues() {
+	public QuickMap<String, DBugConfigValue<A, ?>> getValues() {
 		return theValues;
 	}
 
@@ -45,7 +45,7 @@ public class DBugConfig<A> {
 		return theCondition;
 	}
 
-	public ParameterMap<List<DBugEventConfig<A>>> getEvents() {
+	public QuickMap<String, List<DBugEventConfig<A>>> getEvents() {
 		return theEvents;
 	}
 
@@ -105,14 +105,14 @@ public class DBugConfig<A> {
 	public static class DBugEventConfig<A> {
 		public final DBugEventConfigTemplate template;
 		public final DefaultDBugEventType<A> eventType;
-		public final ParameterMap<DBugEventValue<A, ?>> eventValues;
+		public final QuickMap<String, DBugEventValue<A, ?>> eventValues;
 		public final DBugEventValue<A, Boolean> condition;
 		private final DBugConfig<A>[] theConfig;
 		private final Object[] theEventReporterCompiledAnchors;
 		private final Object[] theReporterCompiledEvents;
 
 		public DBugEventConfig(DBugEventConfigTemplate template, DefaultDBugEventType<A> eventType,
-			ParameterMap<DBugEventValue<A, ?>> eventValues, DBugEventValue<A, Boolean> condition, DBugConfig<A>[] config) {
+			QuickMap<String, DBugEventValue<A, ?>> eventValues, DBugEventValue<A, Boolean> condition, DBugConfig<A>[] config) {
 			this.template = template;
 			this.eventType = eventType;
 			this.eventValues = eventValues;

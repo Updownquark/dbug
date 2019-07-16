@@ -6,20 +6,20 @@ import org.dbug.DBugAnchor;
 import org.dbug.DBugEvent;
 import org.dbug.DBugEventType;
 import org.dbug.DBugProcess;
-import org.qommons.collect.ParameterSet.ParameterMap;
+import org.qommons.collect.QuickSet.QuickMap;
 
 public class DBugEventTemplate<A> implements DBugEvent<A> {
 	private final DBugProcess theProcess;
 	private final long theEventId;
 	private final DefaultDBugAnchor<A> theAnchor;
 	private final DefaultDBugEventType<A> theType;
-	private final ParameterMap<Object> theDynamicValues;
-	private final ParameterMap<Object> theEventValues;
+	private final QuickMap<String, Object> theDynamicValues;
+	private final QuickMap<String, Object> theEventValues;
 	private final Instant theStartTime;
 	private Instant theEndTime;
 
 	public DBugEventTemplate(DBugProcess process, long eventId, DefaultDBugAnchor<A> anchor, DefaultDBugEventType<A> type,
-		ParameterMap<Object> dynamicValues, ParameterMap<Object> eventValues, boolean transactional) {
+		QuickMap<String, Object> dynamicValues, QuickMap<String, Object> eventValues, boolean transactional) {
 		theProcess = process;
 		theEventId = eventId;
 		theAnchor = anchor;
@@ -52,12 +52,12 @@ public class DBugEventTemplate<A> implements DBugEvent<A> {
 	}
 
 	@Override
-	public ParameterMap<Object> getDynamicValues() {
+	public QuickMap<String, Object> getDynamicValues() {
 		return theDynamicValues;
 	}
 
 	@Override
-	public ParameterMap<Object> getEventValues() {
+	public QuickMap<String, Object> getEventValues() {
 		return theEventValues;
 	}
 

@@ -5,13 +5,13 @@ import java.util.function.Supplier;
 
 import org.dbug.DBugEventBuilder;
 import org.qommons.Transaction;
-import org.qommons.collect.ParameterSet.ParameterMap;
+import org.qommons.collect.QuickSet.QuickMap;
 
 public class DefaultDBugEventBuilder<T> implements DBugEventBuilder {
 	private final DefaultDBug theDBug;
 	private final DefaultDBugAnchor<T> theAnchor;
 	private final DefaultDBugEventType<T> theType;
-	private final ParameterMap<Object> theEventProperties;
+	private final QuickMap<String, Object> theEventProperties;
 	private final BitSet theSpecifiedParameters;
 
 	public DefaultDBugEventBuilder(DefaultDBug dBug, DefaultDBugAnchor<T> anchor, DefaultDBugEventType<T> type) {

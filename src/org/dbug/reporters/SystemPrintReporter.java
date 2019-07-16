@@ -10,7 +10,7 @@ import org.dbug.DBug;
 import org.dbug.config.DBugConfigEvent;
 import org.dbug.config.SimpleDBugEventReporter;
 import org.qommons.Transaction;
-import org.qommons.collect.ParameterSet.ParameterMap;
+import org.qommons.collect.QuickSet.QuickMap;
 import org.qommons.config.QommonsConfig;
 
 public class SystemPrintReporter implements SimpleDBugEventReporter {
@@ -128,7 +128,7 @@ public class SystemPrintReporter implements SimpleDBugEventReporter {
 			case "time":
 				return new ReferenceValue(event.getStart(), m.start(), m.end());
 			}
-			ParameterMap<Object> values = event.getEventConfigValues();
+			QuickMap<String, Object> values = event.getEventConfigValues();
 			int index = values.keySet().indexOf(varName);
 			if (index < 0) {
 				values = event.getEventValues();
@@ -186,7 +186,7 @@ public class SystemPrintReporter implements SimpleDBugEventReporter {
 	private static void printValue(StringBuilder str, DBugConfigEvent<?> event, String value, boolean printLabels) {
 		if (printStandardValue(str, event, value, printLabels))
 			return;
-		ParameterMap<Object> values = event.getEventConfigValues();
+		QuickMap<String, Object> values = event.getEventConfigValues();
 		int index = values.keySet().indexOf(value);
 		if (index < 0) {
 			values = event.getEventValues();
@@ -233,7 +233,7 @@ public class SystemPrintReporter implements SimpleDBugEventReporter {
 		return true;
 	}
 
-	private static void printValue(StringBuilder str, ParameterMap<Object> values, int index, boolean printLabels) {
+	private static void printValue(StringBuilder str, QuickMap<String, Object> values, int index, boolean printLabels) {
 		if (printLabels)
 			str.append(values.keySet().get(index)).append('=');
 		str.append(values.get(index));

@@ -7,15 +7,15 @@ import java.util.function.Function;
 import org.dbug.DBugAnchor;
 import org.dbug.DBugAnchorBuilder;
 import org.dbug.DBugParameterType;
-import org.qommons.collect.ParameterSet.ParameterMap;
+import org.qommons.collect.QuickSet.QuickMap;
 
 public class DefaultAnchorBuilder<T> implements DBugAnchorBuilder<T> {
 	private final DefaultDBug theDebug;
 	private final DefaultDBugAnchorType<T> theType;
 	private final T theValue;
 
-	private final ParameterMap<Object> theStaticValues;
-	private final ParameterMap<Object> theDynamicValues;
+	private final QuickMap<String, Object> theStaticValues;
+	private final QuickMap<String, Object> theDynamicValues;
 	private Set<String> theExternallySpecifiedParameters;
 
 	public DefaultAnchorBuilder(DefaultDBug debug, DefaultDBugAnchorType<T> type, T value) {

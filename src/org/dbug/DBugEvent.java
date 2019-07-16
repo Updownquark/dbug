@@ -2,7 +2,7 @@ package org.dbug;
 
 import java.time.Instant;
 
-import org.qommons.collect.ParameterSet.ParameterMap;
+import org.qommons.collect.QuickSet.QuickMap;
 
 public interface DBugEvent<A> {
 	DBugProcess getProcess();
@@ -13,8 +13,8 @@ public interface DBugEvent<A> {
 
 	DBugAnchor<A> getAnchor();
 
-	ParameterMap<Object> getDynamicValues();
-	ParameterMap<Object> getEventValues();
+	QuickMap<String, Object> getDynamicValues();
+	QuickMap<String, Object> getEventValues();
 
 	Instant getStart();
 	Instant getEnd();

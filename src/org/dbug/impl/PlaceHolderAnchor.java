@@ -5,7 +5,7 @@ import java.util.function.Function;
 import org.dbug.DBugAnchor;
 import org.dbug.DBugAnchorType;
 import org.dbug.DBugEventBuilder;
-import org.qommons.collect.ParameterSet.ParameterMap;
+import org.qommons.collect.QuickSet.QuickMap;
 
 class PlaceHolderAnchor<T> implements DBugAnchor<T> {
 	private final DefaultDBug theDebug;
@@ -43,7 +43,7 @@ class PlaceHolderAnchor<T> implements DBugAnchor<T> {
 	}
 
 	@Override
-	public ParameterMap<Object> getStaticValues() {
+	public QuickMap<String, Object> getStaticValues() {
 		if (!tryRetrieve())
 			return theType.getStaticFields().keySet().createDynamicMap(index -> {
 				if (!tryRetrieve())
@@ -54,7 +54,7 @@ class PlaceHolderAnchor<T> implements DBugAnchor<T> {
 	}
 
 	@Override
-	public ParameterMap<Object> getDynamicValues() {
+	public QuickMap<String, Object> getDynamicValues() {
 		if (!tryRetrieve())
 			return theType.getDynamicFields().keySet().createDynamicMap(index -> {
 				if (!tryRetrieve())

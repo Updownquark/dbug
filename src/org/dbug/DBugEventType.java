@@ -1,6 +1,6 @@
 package org.dbug;
 
-import org.qommons.collect.ParameterSet.ParameterMap;
+import org.qommons.collect.QuickSet.QuickMap;
 
 import com.google.common.reflect.TypeToken;
 
@@ -15,5 +15,5 @@ public interface DBugEventType<T> {
 
 	int getEventIndex();
 
-	ParameterMap<TypeToken<?>> getEventFields();
+	QuickMap<String, TypeToken<?>> getEventFields();
 }

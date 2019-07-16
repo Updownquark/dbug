@@ -17,7 +17,7 @@ import org.dbug.config.DBugConfigTemplate;
 import org.dbug.config.DBugConfigTemplate.DBugConfigTemplateValue;
 import org.dbug.config.DBugConfigTemplate.DBugEventConfigTemplate;
 import org.observe.util.TypeTokens;
-import org.qommons.collect.ParameterSet.ParameterMap;
+import org.qommons.collect.QuickSet.QuickMap;
 
 import com.google.common.reflect.TypeToken;
 
@@ -28,8 +28,8 @@ public class DBugParseEnv<T> {
 	private final DBugEventType<T> theEventType;
 	private final DBugConfigTemplate theConfig;
 	private final DBugEventConfigTemplate theEventConfig;
-	private final ParameterMap<DBugConfig.DBugConfigValue<T, ?>> theAnchorVariables;
-	private final ParameterMap<DBugEventValue<T, ?>> theEventVariables;
+	private final QuickMap<String, DBugConfig.DBugConfigValue<T, ?>> theAnchorVariables;
+	private final QuickMap<String, DBugEventValue<T, ?>> theEventVariables;
 	private final BitSet theDynamicDependencies;
 	private final BitSet theConfigVariableDependencies;
 	private final BitSet theEventVariableDependencies;
@@ -38,7 +38,7 @@ public class DBugParseEnv<T> {
 	private boolean isCacheable;
 
 	public DBugParseEnv(DBugAnchorType<T> type, DBugEventType<T> eventType, DBugConfigTemplate config, DBugEventConfigTemplate eventConfig,
-		ParameterMap<DBugConfigValue<T, ?>> anchorVariables, ParameterMap<DBugEventValue<T, ?>> eventVariables, //
+		QuickMap<String, DBugConfigValue<T, ?>> anchorVariables, QuickMap<String, DBugEventValue<T, ?>> eventVariables, //
 		Consumer<String> onError) {
 		theType = type;
 		theEventType = eventType;
@@ -150,11 +150,11 @@ public class DBugParseEnv<T> {
 		}
 	}
 
-	public ParameterMap<DBugConfig.DBugConfigValue<T, ?>> getAnchorVariables() {
+	public QuickMap<String, DBugConfig.DBugConfigValue<T, ?>> getAnchorVariables() {
 		return theAnchorVariables.unmodifiable();
 	}
 
-	public ParameterMap<DBugEventValue<T, ?>> getEventVariables() {
+	public QuickMap<String, DBugEventValue<T, ?>> getEventVariables() {
 		return theEventVariables.unmodifiable();
 	}
 

@@ -19,8 +19,8 @@ import org.dbug.expression.ExpressionParser;
 import org.dbug.expression.ExternalExpressionSpec;
 import org.qommons.ArrayUtils;
 import org.qommons.IterableUtils;
-import org.qommons.collect.ParameterSet;
-import org.qommons.collect.ParameterSet.ParameterMap;
+import org.qommons.collect.QuickSet;
+import org.qommons.collect.QuickSet.QuickMap;
 import org.qommons.config.QommonsConfig;
 
 public class DBugConfigSet {
@@ -155,7 +155,7 @@ public class DBugConfigSet {
 			if (variables.put(varConfig.get("name"), var) != null)
 				throw new DBugParseException("Duplicate variables " + varConfig.get("name"));
 		}
-		ParameterMap<DBugConfigTemplateValue> varMap = ParameterSet.of(variables.keySet()).createMap();
+		QuickMap<String, DBugConfigTemplateValue> varMap = QuickSet.of(variables.keySet()).createMap();
 		for (int i = 0; i < varMap.keySet().size(); i++)
 			varMap.put(i, variables.get(varMap.keySet().get(i)));
 		variables = null;
@@ -183,7 +183,7 @@ public class DBugConfigSet {
 			if (events.put(evtConfig.get("name"), evt) != null)
 				throw new DBugParseException("Duplicate events " + evtConfig.get("name"));
 		}
-		ParameterMap<DBugEventConfigTemplate> evtMap = ParameterSet.of(events.keySet()).createMap();
+		QuickMap<String, DBugEventConfigTemplate> evtMap = QuickSet.of(events.keySet()).createMap();
 		for (int i = 0; i < evtMap.keySet().size(); i++)
 			evtMap.put(i, events.get(evtMap.keySet().get(i)));
 		events = null;
@@ -227,7 +227,7 @@ public class DBugConfigSet {
 			if (variables.put(varConfig.get("name"), expression) != null)
 				throw new DBugParseException("Duplicate event variables " + varConfig.get("name"));
 		}
-		ParameterMap<DBugAntlrExpression> varMap = ParameterSet.of(variables.keySet()).createMap();
+		QuickMap<String, DBugAntlrExpression> varMap = QuickSet.of(variables.keySet()).createMap();
 		for (int i = 0; i < varMap.keySet().size(); i++)
 			varMap.put(i, variables.get(varMap.keySet().get(i)));
 		variables = null;

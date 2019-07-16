@@ -26,8 +26,8 @@ import org.dbug.expression.Expression;
 import org.dbug.expression.ExpressionParser;
 import org.observe.util.TypeTokens;
 import org.qommons.BiTuple;
-import org.qommons.collect.ParameterSet;
-import org.qommons.collect.ParameterSet.ParameterMap;
+import org.qommons.collect.QuickSet;
+import org.qommons.collect.QuickSet.QuickMap;
 
 import com.google.common.reflect.TypeToken;
 
@@ -36,9 +36,9 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 	private final String theSchema;
 	private final Class<A> theType;
 	final Class<?> theBuilderClass;
-	private final ParameterMap<DBugParameterType<A, ?>> theStaticValues;
-	private final ParameterMap<DBugParameterType<A, ?>> theDynamicValues;
-	private final ParameterMap<DefaultDBugEventType<A>> theEventTypes;
+	private final QuickMap<String, DBugParameterType<A, ?>> theStaticValues;
+	private final QuickMap<String, DBugParameterType<A, ?>> theDynamicValues;
+	private final QuickMap<String, DefaultDBugEventType<A>> theEventTypes;
 	final int theActiveEventIndex;
 	final int theUpdateEventIndex;
 
@@ -59,8 +59,8 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 			else
 				dynamicValueNames.add(valueType.getKey());
 		}
-		ParameterMap<DBugParameterType<A, ?>> staticValues = ParameterSet.of(staticValueNames).createMap();
-		ParameterMap<DBugParameterType<A, ?>> dynamicValues = ParameterSet.of(dynamicValueNames).createMap();
+		QuickMap<String, DBugParameterType<A, ?>> staticValues = QuickSet.of(staticValueNames).createMap();
+		QuickMap<String, DBugParameterType<A, ?>> dynamicValues = QuickSet.of(dynamicValueNames).createMap();
 		for (Map.Entry<String, DBugParameterType<A, ?>> valueType : valueTypes.entrySet()) {
 			if (valueType.getValue().level == DBugFieldType.STATIC)
 				staticValues.put(valueType.getKey(), valueType.getValue());
@@ -70,7 +70,7 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 		theStaticValues = staticValues.unmodifiable();
 		theDynamicValues = dynamicValues.unmodifiable();
 
-		ParameterMap<DefaultDBugEventType<A>> eventTypeMap = ParameterSet.of(eventTypes.keySet()).createMap();
+		QuickMap<String, DefaultDBugEventType<A>> eventTypeMap = QuickSet.of(eventTypes.keySet()).createMap();
 		for (int i = 0; i < eventTypeMap.keySet().size(); i++) {
 			String eventName = eventTypeMap.keySet().get(i);
 			eventTypeMap.put(i, new DefaultDBugEventType<>(this, eventName, i, eventTypes.get(eventName)));
@@ -94,18 +94,18 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 	}
 
 	@Override
-	public ParameterMap<DBugParameterType<A, ?>> getStaticFields() {
+	public QuickMap<String, DBugParameterType<A, ?>> getStaticFields() {
 		return theStaticValues;
 	}
 
 	@Override
-	public ParameterMap<DBugParameterType<A, ?>> getDynamicFields() {
+	public QuickMap<String, DBugParameterType<A, ?>> getDynamicFields() {
 		return theDynamicValues;
 	}
 
 	@Override
-	public ParameterMap<DBugEventType<A>> getEventTypes() {
-		return (ParameterMap<DBugEventType<A>>) (ParameterMap<? extends DBugEventType<A>>) theEventTypes;
+	public QuickMap<String, DBugEventType<A>> getEventTypes() {
+		return (QuickMap<String, DBugEventType<A>>) (QuickMap<String, ? extends DBugEventType<A>>) theEventTypes;
 	}
 
 	@Override
@@ -189,9 +189,9 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 	private DBugConfig<A> parseConfig(DBugConfigTemplate config, Consumer<String> onError) {
 		DBugConfig<A>[] configHolder = new DBugConfig[1];
 		// Parse the anchor variables first
-		ParameterMap<DBugConfig.DBugConfigValue<A, ?>> variables = parseVariables(config, onError);
+		QuickMap<String, DBugConfig.DBugConfigValue<A, ?>> variables = parseVariables(config, onError);
 		// Parse the events
-		ParameterMap<List<DBugConfig.DBugEventConfig<A>>> events = parseEvents(config, variables, onError, configHolder);
+		QuickMap<String, List<DBugConfig.DBugEventConfig<A>>> events = parseEvents(config, variables, onError, configHolder);
 		// Parse the condition last
 		boolean[] valid = new boolean[] { true };
 		DBugParseEnv<A> env = new DBugParseEnv<>(this, null, config, null, variables, null, err -> {
@@ -219,9 +219,9 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 			return null;
 	}
 
-	private ParameterMap<DBugConfig.DBugConfigValue<A, ?>> parseVariables(DBugConfigTemplate config, Consumer<String> onError) {
-		ParameterMap<DBugConfigTemplate.DBugConfigTemplateValue> varTemplates = config.getValues();
-		ParameterMap<DBugConfig.DBugConfigValue<A, ?>> variables = varTemplates.keySet().createMap();
+	private QuickMap<String, DBugConfig.DBugConfigValue<A, ?>> parseVariables(DBugConfigTemplate config, Consumer<String> onError) {
+		QuickMap<String, DBugConfigTemplate.DBugConfigTemplateValue> varTemplates = config.getValues();
+		QuickMap<String, DBugConfig.DBugConfigValue<A, ?>> variables = varTemplates.keySet().createMap();
 		String[] varName = new String[1];
 		DBugParseEnv<A> env = new DBugParseEnv<>(this, null, config, null, variables, null, err -> {
 			onError.accept("Error in variable " + theType.getName() + "." + varName[0] + ": " + err);
@@ -254,10 +254,10 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 		return variables;
 	}
 
-	private ParameterMap<List<DBugConfig.DBugEventConfig<A>>> parseEvents(DBugConfigTemplate config,
-		ParameterMap<DBugConfig.DBugConfigValue<A, ?>> variables, Consumer<String> onError, DBugConfig<A>[] configHolder) {
-		ParameterMap<DBugConfigTemplate.DBugEventConfigTemplate> eventTemplates = config.getEvents();
-		ParameterMap<List<DBugConfig.DBugEventConfig<A>>> events = theEventTypes.keySet().createMap();
+	private QuickMap<String, List<DBugConfig.DBugEventConfig<A>>> parseEvents(DBugConfigTemplate config,
+		QuickMap<String, DBugConfig.DBugConfigValue<A, ?>> variables, Consumer<String> onError, DBugConfig<A>[] configHolder) {
+		QuickMap<String, DBugConfigTemplate.DBugEventConfigTemplate> eventTemplates = config.getEvents();
+		QuickMap<String, List<DBugConfig.DBugEventConfig<A>>> events = theEventTypes.keySet().createMap();
 		for (int i = 0; i < eventTemplates.keySet().size(); i++) {
 			DBugEventConfigTemplate event = eventTemplates.get(i);
 			int ei = theEventTypes.keySet().indexOf(event.eventName);
@@ -267,7 +267,7 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 			}
 			DefaultDBugEventType<A> eventType = theEventTypes.get(ei);
 			// Event variables
-			ParameterMap<DBugEventValue<A, ?>> eventVars = event.eventVariables.keySet().createMap();
+			QuickMap<String, DBugEventValue<A, ?>> eventVars = event.eventVariables.keySet().createMap();
 			String[] varName = new String[1];
 			DBugParseEnv<A> env = new DBugParseEnv<>(this, eventType, config, event, variables, eventVars, err -> {
 				String v = varName[0] == null//
@@ -359,13 +359,13 @@ public class DefaultDBugAnchorType<A> implements DBugAnchorType<A> {
 		}
 
 		@Override
-		public ParameterMap<Object> getStaticValues() {
-			return ParameterSet.EMPTY.createMap();
+		public QuickMap<String, Object> getStaticValues() {
+			return QuickSet.<String> empty().createMap();
 		}
 
 		@Override
-		public ParameterMap<Object> getDynamicValues() {
-			return ParameterSet.EMPTY.createMap();
+		public QuickMap<String, Object> getDynamicValues() {
+			return QuickSet.<String> empty().createMap();
 		}
 
 		@Override

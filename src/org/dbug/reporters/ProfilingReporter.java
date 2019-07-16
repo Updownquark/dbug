@@ -24,8 +24,8 @@ import org.observe.util.TypeTokens;
 import org.qommons.QommonsUtils;
 import org.qommons.Transaction;
 import org.qommons.collect.BetterHashMap;
-import org.qommons.collect.ParameterSet;
-import org.qommons.collect.ParameterSet.ParameterMap;
+import org.qommons.collect.QuickSet;
+import org.qommons.collect.QuickSet.QuickMap;
 import org.qommons.config.QommonsConfig;
 
 public class ProfilingReporter implements SimpleDBugEventReporter {
@@ -59,7 +59,7 @@ public class ProfilingReporter implements SimpleDBugEventReporter {
 	private long theForcePrintInterval;
 	private long theResetInterval;
 	private String theIndent = "\t";
-	final Map<ParameterMap<Object>, ProfileNode> theRoots;
+	final Map<QuickMap<String, Object>, ProfileNode> theRoots;
 	private final ThreadLocal<ProfilingThread> theUnfinishedStacks;
 	private final BetterHashMap<DBugEventConfig<?>, EventProfileConfig> theEventDescrip;
 	private volatile long theLastPrint;
@@ -198,7 +198,7 @@ public class ProfilingReporter implements SimpleDBugEventReporter {
 		}
 		if (lastEnd < groupingString.length())
 			groupingPrint.add(groupingString.substring(lastEnd));
-		ParameterMap<Function<DBugConfigEvent<?>, Object>> groupValues = ParameterSet.of(map.keySet()).createMap();
+		QuickMap<String, Function<DBugConfigEvent<?>, Object>> groupValues = QuickSet.of(map.keySet()).createMap();
 		for (int i = 0; i < groupingPrint.size(); i++) {
 			if (groupingPrint.get(i) instanceof String[]) {
 				String valName = ((String[]) groupingPrint.get(i))[0];
@@ -248,12 +248,12 @@ public class ProfilingReporter implements SimpleDBugEventReporter {
 	}
 
 	private static class EventProfileConfig {
-		static final EventProfileConfig EMPTY = new EventProfileConfig(Collections.emptyList(), ParameterSet.EMPTY.createMap());
+		static final EventProfileConfig EMPTY = new EventProfileConfig(Collections.emptyList(), QuickSet.<String> empty().createMap());
 
 		final List<Object> groupingPrint;
-		final ParameterMap<Function<DBugConfigEvent<?>, Object>> groupValues;
+		final QuickMap<String, Function<DBugConfigEvent<?>, Object>> groupValues;
 
-		EventProfileConfig(List<Object> groupingPrint, ParameterMap<Function<DBugConfigEvent<?>, Object>> groupValues) {
+		EventProfileConfig(List<Object> groupingPrint, QuickMap<String, Function<DBugConfigEvent<?>, Object>> groupValues) {
 			this.groupingPrint = groupingPrint;
 			this.groupValues = groupValues;
 		}
@@ -261,14 +261,14 @@ public class ProfilingReporter implements SimpleDBugEventReporter {
 
 	private class ProfileNode {
 		final EventProfileConfig theConfig;
-		final ParameterMap<Object> group;
+		final QuickMap<String, Object> group;
 		final AtomicLong theCount;
 		final AtomicReference<Duration> theDuration;
 		final AtomicReference<NodeActivity> theActivity;
 
-		private final ConcurrentHashMap<ParameterMap<Object>, ProfileNode> theChildren;
+		private final ConcurrentHashMap<QuickMap<String, Object>, ProfileNode> theChildren;
 
-		ProfileNode(EventProfileConfig config, ParameterMap<Object> group) {
+		ProfileNode(EventProfileConfig config, QuickMap<String, Object> group) {
 			theConfig = config;
 			this.group = group;
 			theCount = new AtomicLong();
@@ -285,7 +285,7 @@ public class ProfilingReporter implements SimpleDBugEventReporter {
 			return theDuration.get();
 		}
 
-		ProfileNode within(EventProfileConfig config, ParameterMap<Object> childGroup) {
+		ProfileNode within(EventProfileConfig config, QuickMap<String, Object> childGroup) {
 			return theChildren.computeIfAbsent(childGroup, g -> new ProfileNode(config, g));
 		}
 
@@ -400,7 +400,7 @@ public class ProfilingReporter implements SimpleDBugEventReporter {
 		}
 
 		Transaction eventBegun(DBugConfigEvent<?> event, EventProfileConfig config) {
-			ParameterMap<Object> group = config.groupValues.keySet().createMap();
+			QuickMap<String, Object> group = config.groupValues.keySet().createMap();
 			for (int i = 0; i < group.keySet().size(); i++)
 				group.put(i, config.groupValues.get(i).apply(event));
 			if (theStack.isEmpty()) {

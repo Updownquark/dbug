@@ -36,7 +36,7 @@ import org.dbug.config.DBugConfiguredAnchor;
 import org.dbug.config.DBugEventReporter;
 import org.qommons.BiTuple;
 import org.qommons.Transaction;
-import org.qommons.collect.ParameterSet.ParameterMap;
+import org.qommons.collect.QuickSet.QuickMap;
 import org.qommons.config.QommonsConfig;
 
 /** Persists all anchor and event data received into a relation DB, in the dbug schema defined by dbug.sql */
@@ -355,9 +355,9 @@ public class DBReporter implements DBugEventReporter<DBReporter.DBCompiledAnchor
 		final long schemaId;
 		final long id;
 		final boolean isNewSchema;
-		final ParameterMap<Long> theStaticFieldIds;
-		final ParameterMap<Long> theDynamicFieldIds;
-		final ParameterMap<DBCompiledEventType> theEventTypes;
+		final QuickMap<String, Long> theStaticFieldIds;
+		final QuickMap<String, Long> theDynamicFieldIds;
+		final QuickMap<String, DBCompiledEventType> theEventTypes;
 
 		DBCompiledAnchorType(DBReporter reporter, DBugAnchorType<?> anchorType) {
 			theReporter = reporter;
@@ -446,7 +446,7 @@ public class DBReporter implements DBugEventReporter<DBReporter.DBCompiledAnchor
 		final DBCompiledAnchorType theAnchorType;
 		final DBugEventType<?> theEventType;
 		final long id;
-		final ParameterMap<Long> theEventFieldIds;
+		final QuickMap<String, Long> theEventFieldIds;
 
 		DBCompiledEventType(DBCompiledAnchorType anchorType, int eventIndex) {
 			theAnchorType = anchorType;
@@ -479,9 +479,9 @@ public class DBReporter implements DBugEventReporter<DBReporter.DBCompiledAnchor
 		final boolean isNewAnchorType;
 		final DBugConfig<?> theAnchor;
 		final long id;
-		final ParameterMap<Long> theConfigValueIds;
+		final QuickMap<String, Long> theConfigValueIds;
 		final long theConfigConditionId;
-		final ParameterMap<List<DBCompiledEventConfig>> theEventConfigs;
+		final QuickMap<String, List<DBCompiledEventConfig>> theEventConfigs;
 
 		DBCompiledAnchorConfig(DBReporter reporter, DBugConfig<?> anchor) {
 			theReporter = reporter;
@@ -559,7 +559,7 @@ public class DBReporter implements DBugEventReporter<DBReporter.DBCompiledAnchor
 		final DBCompiledEventType theEventType;
 		final DBugEventConfig<?> theEventConfig;
 		final long id;
-		final ParameterMap<Long> theEventConfigValueIds;
+		final QuickMap<String, Long> theEventConfigValueIds;
 		final long theEventConditionId;
 
 		DBCompiledEventConfig(DBCompiledAnchorConfig compiledAnchor, DBugEventConfig<?> event) {
@@ -593,8 +593,8 @@ public class DBReporter implements DBugEventReporter<DBReporter.DBCompiledAnchor
 		final DBCompiledAnchorType theAnchorType;
 		final DBugAnchor<?> theAnchor;
 		final long id;
-		final ParameterMap<Object> theStaticAnchorFieldValues;
-		final ParameterMap<Object> theDynamicAnchorFieldValues;
+		final QuickMap<String, Object> theStaticAnchorFieldValues;
+		final QuickMap<String, Object> theDynamicAnchorFieldValues;
 		final AtomicBoolean isInitialized;
 
 		DBCompiledAnchor(DBReporter reporter, DBugAnchor<?> anchor) {
@@ -666,7 +666,7 @@ public class DBReporter implements DBugEventReporter<DBReporter.DBCompiledAnchor
 		final DBCompiledAnchorConfig theAnchorConfig;
 		final DBugConfiguredAnchor<?> theAnchor;
 		final long id;
-		final ParameterMap<Object> theConfigAnchorValues;
+		final QuickMap<String, Object> theConfigAnchorValues;
 		boolean isActive;
 		final AtomicBoolean isInitialized;
 

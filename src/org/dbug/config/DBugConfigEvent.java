@@ -2,7 +2,7 @@ package org.dbug.config;
 
 import org.dbug.DBugEvent;
 import org.dbug.config.DBugConfig.DBugEventConfig;
-import org.qommons.collect.ParameterSet.ParameterMap;
+import org.qommons.collect.QuickSet.QuickMap;
 
 public interface DBugConfigEvent<A> extends DBugEvent<A> {
 	DBugConfig<A> getConfig();
@@ -12,5 +12,5 @@ public interface DBugConfigEvent<A> extends DBugEvent<A> {
 	@Override
 	DBugConfiguredAnchor<A> getAnchor();
 
-	ParameterMap<Object> getEventConfigValues();
+	QuickMap<String, Object> getEventConfigValues();
 }

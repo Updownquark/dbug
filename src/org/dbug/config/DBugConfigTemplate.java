@@ -3,19 +3,19 @@ package org.dbug.config;
 import java.util.List;
 
 import org.dbug.expression.DBugAntlrExpression;
-import org.qommons.collect.ParameterSet.ParameterMap;
+import org.qommons.collect.QuickSet.QuickMap;
 
 public class DBugConfigTemplate {
 	private final String theID;
 	private final String theSchema;
 	private final String theClassName;
-	private final ParameterMap<DBugConfigTemplateValue> theValues;
+	private final QuickMap<String, DBugConfigTemplateValue> theValues;
 	private final DBugAntlrExpression theCondition;
-	private final ParameterMap<DBugEventConfigTemplate> theEvents;
+	private final QuickMap<String, DBugEventConfigTemplate> theEvents;
 	private final List<DBugEventReporter<?, ?, ?, ?, ?>> theReporters;
 
-	public DBugConfigTemplate(String id, String schema, String className, ParameterMap<DBugConfigTemplateValue> values,
-		DBugAntlrExpression condition, List<DBugEventReporter<?, ?, ?, ?, ?>> reporters, ParameterMap<DBugEventConfigTemplate> events) {
+	public DBugConfigTemplate(String id, String schema, String className, QuickMap<String, DBugConfigTemplateValue> values,
+		DBugAntlrExpression condition, List<DBugEventReporter<?, ?, ?, ?, ?>> reporters, QuickMap<String, DBugEventConfigTemplate> events) {
 		theID = id;
 		theSchema = schema;
 		theClassName = className;
@@ -37,7 +37,7 @@ public class DBugConfigTemplate {
 		return theClassName;
 	}
 
-	public ParameterMap<DBugConfigTemplateValue> getValues() {
+	public QuickMap<String, DBugConfigTemplateValue> getValues() {
 		return theValues;
 	}
 
@@ -45,7 +45,7 @@ public class DBugConfigTemplate {
 		return theCondition;
 	}
 
-	public ParameterMap<DBugEventConfigTemplate> getEvents() {
+	public QuickMap<String, DBugEventConfigTemplate> getEvents() {
 		return theEvents;
 	}
 
@@ -73,13 +73,13 @@ public class DBugConfigTemplate {
 	public static class DBugEventConfigTemplate {
 		private List<DBugEventReporter<?, ?, ?, ?, ?>> globalReporters;
 		public final String eventName;
-		public final ParameterMap<DBugAntlrExpression> eventVariables;
+		public final QuickMap<String, DBugAntlrExpression> eventVariables;
 		public final DBugAntlrExpression condition;
 		public final List<DBugEventReporter<?, ?, ?, ?, ?>> eventReporters;
 		private final DBugConfigTemplate[] template;
 
 		public DBugEventConfigTemplate(List<DBugEventReporter<?, ?, ?, ?, ?>> globalReporters, String eventName,
-			ParameterMap<DBugAntlrExpression> eventVariables, DBugAntlrExpression condition,
+			QuickMap<String, DBugAntlrExpression> eventVariables, DBugAntlrExpression condition,
 			List<DBugEventReporter<?, ?, ?, ?, ?>> eventReporters, DBugConfigTemplate[] template) {
 			this.globalReporters = globalReporters;
 			this.eventName = eventName;

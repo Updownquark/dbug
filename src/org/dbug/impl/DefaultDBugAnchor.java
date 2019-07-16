@@ -31,21 +31,21 @@ import org.dbug.expression.ConstantExpression;
 import org.dbug.expression.DBugParseException;
 import org.dbug.expression.Expression;
 import org.qommons.Transaction;
-import org.qommons.collect.ParameterSet.ParameterMap;
+import org.qommons.collect.QuickSet.QuickMap;
 
 public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 	private final DefaultDBug theDBug;
 	final DefaultDBugAnchorType<A> theType;
 	private final A theValue;
-	private final ParameterMap<Object> theStaticValues;
-	private ParameterMap<Object> theDynamicValues;
+	private final QuickMap<String, Object> theStaticValues;
+	private QuickMap<String, Object> theDynamicValues;
 	final IdentityHashMap<DBugEventReporter<?, ?, ?, ?, ?>, Object> theCompiledAnchors;
 
 	final List<DBugConfigInstance> theConfigs;
 	int isActive;
 
-	DefaultDBugAnchor(DefaultDBug dBug, DefaultDBugAnchorType<A> type, A value, ParameterMap<Object> staticValues,
-		ParameterMap<Object> dynamicValues) {
+	DefaultDBugAnchor(DefaultDBug dBug, DefaultDBugAnchorType<A> type, A value, QuickMap<String, Object> staticValues,
+		QuickMap<String, Object> dynamicValues) {
 		theDBug = dBug;
 		theType = type;
 		theValue = value;
@@ -78,12 +78,12 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 	}
 
 	@Override
-	public ParameterMap<Object> getStaticValues() {
+	public QuickMap<String, Object> getStaticValues() {
 		return theStaticValues;
 	}
 
 	@Override
-	public ParameterMap<Object> getDynamicValues() {
+	public QuickMap<String, Object> getDynamicValues() {
 		return theDynamicValues.unmodifiable();
 	}
 
@@ -92,7 +92,7 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		int index = theDynamicValues.keyIndex(property);
 		P old = (P) theDynamicValues.put(index, value);
 		long eventId = -1;
-		ParameterMap<Object> dvCopy = null;
+		QuickMap<String, Object> dvCopy = null;
 		IdentityHashMap<DBugEventReporter<?, ?, ?, ?, ?>, Object> compiledEvents = null;
 		for (DBugConfigInstance config : theConfigs) {
 			// We want to do only enough work here to figure out if the config is now interested in the anchor given the new dynamic value
@@ -150,7 +150,7 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 						varsChanged = Collections.emptySet();
 					DefaultDBugEventType<A> updateEventType = (DefaultDBugEventType<A>) theType.getEventTypes()
 						.get(theType.theUpdateEventIndex);
-					ParameterMap<Object> eventValues = updateEventType.getEventFields().keySet().createMap();
+					QuickMap<String, Object> eventValues = updateEventType.getEventFields().keySet().createMap();
 					eventValues.put("field", property);
 					eventValues.put("variables", varsChanged);
 					eventValues = eventValues.unmodifiable();
@@ -181,13 +181,13 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 	}
 
 	private void fireActive(DBugConfigInstance config, boolean active, String field, Object inactiveValue, long eventId,
-		ParameterMap<Object> dvCopy) {
+		QuickMap<String, Object> dvCopy) {
 		List<DBugEventConfigInstance> activeEventConfigs = config.events.get(theType.theActiveEventIndex);
 		if (!activeEventConfigs.isEmpty()) {
 			IdentityHashMap<DBugEventReporter<?, ?, ?, ?, ?>, Object> compiledEvents = null;
 			DefaultDBugEventType<A> activeEventType = (DefaultDBugEventType<A>) theType.getEventTypes().get(theType.theActiveEventIndex);
 			// The config wants to know when an anchor becomes active or inactive
-			ParameterMap<Object> eventValues = activeEventType.getEventFields().keySet().createMap();
+			QuickMap<String, Object> eventValues = activeEventType.getEventFields().keySet().createMap();
 			eventValues.put("active", active);
 			eventValues.put("field", field);
 			eventValues.put("inactiveFieldValue", inactiveValue);
@@ -350,12 +350,12 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		}
 
 		@Override
-		public ParameterMap<Object> getStaticValues() {
+		public QuickMap<String, Object> getStaticValues() {
 			return DefaultDBugAnchor.this.getStaticValues();
 		}
 
 		@Override
-		public ParameterMap<Object> getDynamicValues() {
+		public QuickMap<String, Object> getDynamicValues() {
 			return DefaultDBugAnchor.this.getDynamicValues();
 		}
 
@@ -377,8 +377,8 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 
 	private class DBugConfigInstance extends AbstractConfiguredRepresenation {
 		final DBugConfig<A> config;
-		final ParameterMap<AnchorEvaluatedExpression<?>> variables;
-		final ParameterMap<List<DBugEventConfigInstance>> events;
+		final QuickMap<String, AnchorEvaluatedExpression<?>> variables;
+		final QuickMap<String, List<DBugEventConfigInstance>> events;
 		final AnchorEvaluatedExpression<Boolean> condition;
 		final Object[] theReporterCompiledConfiguredAnchors;
 
@@ -447,7 +447,7 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		}
 
 		@Override
-		public ParameterMap<Object> getConfigValues() {
+		public QuickMap<String, Object> getConfigValues() {
 			return variables.keySet().createDynamicMap(index -> {
 				return variables.get(index).get();
 			});
@@ -551,7 +551,7 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 	private class DBugEventConfigInstance {
 		final DBugConfigInstance config;
 		final DBugEventConfig<A> eventConfig;
-		final ParameterMap<EventEvaluableExpression<?>> eventVariables;
+		final QuickMap<String, EventEvaluableExpression<?>> eventVariables;
 		final EventEvaluableExpression<?> condition;
 		final Object[] theEventReporterCompiledConfiguredAnchors;
 
@@ -613,7 +613,7 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		private final DBugEventTemplate<A> theEvent;
 		private final DBugEventConfigInstance theConfig;
 		private final EventConfiguredRepresentation theEventAnchor;
-		private final ParameterMap<Object> theEventConfigValues;
+		private final QuickMap<String, Object> theEventConfigValues;
 		final boolean active;
 		private List<Transaction> theReporterTransactions;
 
@@ -621,7 +621,7 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 			theEvent = event;
 			theConfig = config;
 			theEventAnchor = new EventConfiguredRepresentation(config.config);
-			ParameterMap<Object> configValues = config.eventConfig.eventValues.keySet().createMap();
+			QuickMap<String, Object> configValues = config.eventConfig.eventValues.keySet().createMap();
 			theEventConfigValues = configValues.unmodifiable();
 			// Evaluate event variables that the condition depends on
 			if (config.condition != null) {
@@ -713,17 +713,17 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		}
 
 		@Override
-		public ParameterMap<Object> getDynamicValues() {
+		public QuickMap<String, Object> getDynamicValues() {
 			return theEvent.getDynamicValues();
 		}
 
 		@Override
-		public ParameterMap<Object> getEventConfigValues() {
+		public QuickMap<String, Object> getEventConfigValues() {
 			return theEventConfigValues;
 		}
 
 		@Override
-		public ParameterMap<Object> getEventValues() {
+		public QuickMap<String, Object> getEventValues() {
 			return theEvent.getEventValues();
 		}
 
@@ -790,7 +790,7 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 
 	class EventConfiguredRepresentation extends AbstractConfiguredRepresenation {
 		private final DBugConfig<A> theConfig;
-		private final ParameterMap<Object> theAnchorConfigValues;
+		private final QuickMap<String, Object> theAnchorConfigValues;
 
 		EventConfiguredRepresentation(DBugConfigInstance config) {
 			theConfig = config.config;
@@ -808,7 +808,7 @@ public class DefaultDBugAnchor<A> implements DBugAnchor<A> {
 		}
 
 		@Override
-		public ParameterMap<Object> getConfigValues() {
+		public QuickMap<String, Object> getConfigValues() {
 			return theAnchorConfigValues;
 		}
 	}

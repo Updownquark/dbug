@@ -2,7 +2,7 @@ package org.dbug;
 
 import java.util.function.Function;
 
-import org.qommons.collect.ParameterSet.ParameterMap;
+import org.qommons.collect.QuickSet.QuickMap;
 
 /** This interface allows a programmer to create data that will be used to debug and visualize program flow within a program */
 public interface DBugAnchor<T> {
@@ -12,9 +12,9 @@ public interface DBugAnchor<T> {
 
 	boolean isActive();
 
-	ParameterMap<Object> getStaticValues();
+	QuickMap<String, Object> getStaticValues();
 
-	ParameterMap<Object> getDynamicValues();
+	QuickMap<String, Object> getDynamicValues();
 
 	<P> P setDynamicValue(String property, P value);
 
