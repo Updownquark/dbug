@@ -28,7 +28,8 @@ import org.dbug.config.DBugConfigTemplate;
 import org.dbug.expression.DBugParseException;
 import org.qommons.BiTuple;
 import org.qommons.Transaction;
-import org.qommons.collect.BetterSortedSet.SortedSearchFilter;
+import org.qommons.collect.BetterSortedList;
+import org.qommons.collect.BetterSortedList.SortedSearchFilter;
 import org.qommons.collect.CollectionElement;
 import org.qommons.config.QommonsConfig;
 import org.qommons.tree.SortedTreeList;
@@ -266,7 +267,7 @@ public class DefaultDBug implements DBugImplementation {
 		DefaultDBugAnchorType<T> at = new DefaultDBugAnchorType<>(this, schema, clazz, builder.getClass(), b.theValues, b.theEvents);
 		try (Transaction t = theConfigs.lock(false, null)) {
 			CollectionElement<DBugConfigTemplate> config = theConfigs.search(cfg -> clazz.getName().compareTo(cfg.getClassName()),
-				SortedSearchFilter.PreferLess);
+				BetterSortedList.SortedSearchFilter.PreferLess);
 			if (config != null && config.get().getClassName().equals(clazz.getName())) {
 				CollectionElement<DBugConfigTemplate> adj = theConfigs.getAdjacentElement(config.getElementId(), false);
 				while (adj != null && adj.get().getClassName().equals(clazz.getName())) {
